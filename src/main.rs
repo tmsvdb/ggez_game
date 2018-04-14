@@ -21,7 +21,7 @@ use components::CustomComponents;
 use components::*;
 use systems::MoveSystem;
 
-
+/// test git
 pub fn main() {
 
     let cb = ContextBuilder::new("ecs test", "thomas")
