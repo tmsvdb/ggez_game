@@ -1,5 +1,6 @@
 
 use ggez::graphics;
+use ggez::graphics::{Drawable, DrawParam};
 use ggez::event;
 use ggez::{Context, GameResult};
 
@@ -8,7 +9,7 @@ use ggez::{Context, GameResult};
 pub struct ECS <C: Components> 
 {
 	entities: Vec<Entity<C>>,
-	systems: Vec<Box<System<C>>>,
+	systems: Vec<Box<SystemUpdate<C>>>,
 }
 
 impl <C: Components> ECS <C> {
@@ -18,13 +19,14 @@ impl <C: Components> ECS <C> {
         Ok(s)
     }
 
-    pub fn register_system<S: System<C> + 'static>(&mut self, system: S) {
+    pub fn register_for_update<S: SystemUpdate<C> + 'static>(&mut self, system: S) {
     	self.systems.push(Box::new(system));
     }
 
     pub fn register_entity (&mut self, entity: Entity<C>) {
     	self.entities.push(entity);
     }
+
     /*
     pub fn borrow_entity (&mut self, name: String) -> Result<&mut Entity<C>, EcsError> {
     	for e in &mut self.entities {
@@ -50,11 +52,12 @@ impl <C: Components> event::EventHandler for ECS<C>{
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
         graphics::clear(ctx);
-        for system in &self.systems {
-    		for entity in &mut self.entities {
-    			system.draw(ctx, entity);
-    		}
-    	}
+        for entity in &mut self.entities {
+			match entity.properties.drawable {
+				DrawEntity::Image(ref i) => graphics::draw_ex(ctx, i, entity.properties.params).unwrap(),
+				DrawEntity::Text(ref t) => graphics::draw_ex(ctx, t, entity.properties.params).unwrap(),
+			}
+		}
         graphics::present(ctx);
         Ok(())
     }
@@ -64,6 +67,10 @@ impl <C: Components> event::EventHandler for ECS<C>{
 
 /// ECS types & properties
 
+pub enum DrawEntity {
+	Image(graphics::Image),
+	Text(graphics::Text),
+}
 
 /// ENTITY
 #[derive(Default)]
@@ -74,18 +81,27 @@ pub struct Entity <C: Components> {
 
 pub struct EntityProperties {
 	pub name: String,
+    pub params: DrawParam,
+    pub drawable: DrawEntity, 
 }
 
 impl Default for EntityProperties {
-    fn default() -> EntityProperties { 
-    	EntityProperties {name: Default::default() }
-    }
+	fn default () -> Self {
+		EntityProperties{ ..Default::default() }
+	}
 }
+
+/*
+impl Default for EntityProperties {
+    fn default() -> EntityProperties { 
+    	EntityProperties {name: Default::default(), ..Default::default() }
+    }
+}*/
 
 impl <C: Components> Entity <C> {
 
-	pub fn new (name: &str, components: C::ComponentsType) -> Entity<C> {
-		Entity {properties:EntityProperties {name: String::from(name)}, components: components }
+	pub fn new (properties: EntityProperties, components: C::ComponentsType) -> Entity<C> {
+		Entity {properties:properties, components: components }
 	}
 }
 
@@ -98,12 +114,22 @@ pub trait Components {
 
 
 /// SYSTEM
-pub trait System <C: Components>
+pub trait SystemUpdate <C: Components>
 {	
-
 	/// update the entity using this system
 	fn update (&self, entity: &mut Entity<C>);
+}
 
+pub trait SystemDraw<C: Components>
+{	
 	/// each system has the ability to render to the ggez context
 	fn draw (&self, ctx: &mut Context, entity: &mut Entity<C>);
+
+}
+
+pub trait SystemKeyboard
+{	
+	/// each system has the ability to render to the ggez context
+	fn draw (&self, ctx: &mut Context);
+
 }

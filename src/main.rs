@@ -44,15 +44,9 @@ pub fn main() {
     }
 
     // create and register systems
-    if let Ok(m) = MoveSystem::new (ctx) {
-    	ecs.register_system(m);
+    if let Ok(m) = MoveSystem::new (ctx, ecs) {
+    	ecs.register_for_update(m);
     }
-
-    // create startup entities
-	ecs.register_entity(Entity::new("Dragon", CustomComponents { 
-		position: Some(Position { x:-939.0, y:0.0 }), 
-		velocity: Some(Velocity { x:3.0, y:0.0 })
-	}));
 
 	// do gameloop and use ecs engine as ggez event handler
     if let Err(e) = event::run(ctx, ecs) {

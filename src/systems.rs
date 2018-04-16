@@ -1,26 +1,39 @@
 	extern crate ggez;
 
 	use ggez::graphics;
+	use ggez::graphics::{DrawParam};
 	use ggez::{Context, GameResult};
-	use ecs::{Entity, System};
+	use ecs::{Entity, SystemUpdate, EntityProperties, DrawEntity};
 	use ecs::Components;
+	use ecs::ECS;
 	use components::CustomComponents;
+	use components::{Position, Velocity };
 
 
-	pub struct MoveSystem {
+	pub struct MoveSystem;
 
-		image: ggez::graphics::Image,
-	}
-
-	impl MoveSystem {
-		pub fn new (ctx: &mut Context) -> GameResult<MoveSystem> {
+	impl MoveSystem{
+		pub fn new <C: Components<ComponentsType = CustomComponents>> (ctx: &mut Context, ecs: &mut ECS<C>) -> GameResult<MoveSystem> {
 			let i = graphics::Image::new(ctx, "/dragon1.png")?;
-			let m = MoveSystem { image: i };
-			Ok(m)
+
+
+		    // create startup entities
+			ecs.register_entity(Entity::new(
+				EntityProperties{
+					name:"dragon".to_string(), 
+					drawable:DrawEntity::Image(i), 
+					params: DrawParam { ..Default::default() }
+				}, 
+				CustomComponents { 
+					position: Some(Position { x:-939.0, y:0.0 }), 
+					velocity: Some(Velocity { x:3.0, y:0.0 })
+			}));
+
+			Ok(MoveSystem)
 		}
 	}
 
-	impl <C: Components<ComponentsType = CustomComponents>> System<C> for MoveSystem
+	impl <C: Components<ComponentsType = CustomComponents>> SystemUpdate<C> for MoveSystem
 	{
 		fn update (&self, entity: &mut Entity<C>)
 		{
@@ -31,9 +44,12 @@
 
 			    if p.x > 939.0 { p.x = -939.0; }
 			    if p.y > 678.0 { p.y = -678.0; }
+
+			    entity.properties.params.dest = graphics::Point2::new(p.x, p.y);
 			}
 		}
 
+		/*
 		fn draw (&self, ctx: &mut Context, entity: &mut Entity<C>){
 
 			if let &mut Some(ref mut p) = &mut entity.components.position {
@@ -45,4 +61,5 @@
 			}
 			
 		}
+		*/
 	}
