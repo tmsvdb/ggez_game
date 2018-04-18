@@ -1,135 +1,266 @@
 
 use ggez::graphics;
-use ggez::graphics::{Drawable, DrawParam};
+//use ggez::graphics::{Drawable, DrawParam};
 use ggez::event;
+use ggez::event::{Keycode, Mod, MouseButton, MouseState, Button, Axis};
 use ggez::{Context, GameResult};
 
-/// GEZZ implementaion and ECS implemenation
+use components::Components;
 
-pub struct ECS <C: Components> 
+/// GEZZ implementaion and ECS implemenation
+pub struct ECS
 {
-	entities: Vec<Entity<C>>,
-	systems: Vec<Box<SystemUpdate<C>>>,
+	entities: Vec<Entity>,
+	update_systems: Vec<Box<SystemUpdate>>,
+	draw_systems: Vec<Box<SystemDraw>>,
+	keyboard_systems: Vec<Box<SystemKeyboard>>,
+	mouse_systems: Vec<Box<SystemMouse>>,
+	controller_systems: Vec<Box<SystemController>>,
 }
 
-impl <C: Components> ECS <C> {
+impl ECS {
 
-    pub fn new(_ctx: &mut Context) -> GameResult<ECS<C>> {
-        let s = ECS { entities: Vec::new(), systems: Vec::new() };
+    pub fn new(_ctx: &mut Context) -> GameResult<ECS> {
+        let s = ECS { 
+        	entities: Vec::new(), 
+        	update_systems: Vec::new(),
+        	draw_systems: Vec::new(),
+        	keyboard_systems: Vec::new(),
+        	mouse_systems: Vec::new(),
+        	controller_systems: Vec::new(),
+        };
         Ok(s)
     }
 
-    pub fn register_for_update<S: SystemUpdate<C> + 'static>(&mut self, system: S) {
-    	self.systems.push(Box::new(system));
+    pub fn register_for_update<S: SystemUpdate + 'static>(&mut self, system: S) {
+    	self.update_systems.push(Box::new(system));
     }
 
-    pub fn register_entity (&mut self, entity: Entity<C>) {
+    pub fn register_for_draw<S: SystemDraw + 'static>(&mut self, system: S) {
+    	self.draw_systems.push(Box::new(system));
+    }
+
+    pub fn register_for_keyboard<S: SystemKeyboard + 'static>(&mut self, system: S) {
+    	self.keyboard_systems.push(Box::new(system));
+    }
+
+    pub fn register_for_mouse<S: SystemMouse + 'static>(&mut self, system: S) {
+    	self.mouse_systems.push(Box::new(system));
+    }
+
+    pub fn register_for_controller<S: SystemController + 'static>(&mut self, system: S) {
+    	self.controller_systems.push(Box::new(system));
+    }
+
+    pub fn register_entity (&mut self, entity: Entity) {
     	self.entities.push(entity);
     }
 
-    /*
-    pub fn borrow_entity (&mut self, name: String) -> Result<&mut Entity<C>, EcsError> {
-    	for e in &mut self.entities {
-    		if e.properties.name == name {
-    			return Ok(e);
-    		}
-    	}
-    	Err(EcsError::EntityNotFound)
-    }
-    */
 }
 
-impl <C: Components> event::EventHandler for ECS<C>{
+impl event::EventHandler for ECS{
 
     fn update(&mut self, _ctx: &mut Context) -> GameResult<()> {
-    	for system in &self.systems {
+    	for system in &mut self.update_systems {
     		for entity in &mut self.entities {
-    			system.update(entity);
+    			system.update(_ctx, entity);
     		}
     	}
         Ok(())
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
-        graphics::clear(ctx);
-        for entity in &mut self.entities {
-			match entity.properties.drawable {
-				DrawEntity::Image(ref i) => graphics::draw_ex(ctx, i, entity.properties.params).unwrap(),
-				DrawEntity::Text(ref t) => graphics::draw_ex(ctx, t, entity.properties.params).unwrap(),
-			}
-		}
-        graphics::present(ctx);
+    	graphics::clear(ctx);
+    	for system in &mut self.draw_systems {
+    		for entity in &mut self.entities {
+    			system.draw(ctx, entity);
+    		}
+    	}
+    	graphics::present(ctx);
         Ok(())
     }
-}
 
+    fn mouse_button_down_event(&mut self, _ctx: &mut Context, button: MouseButton, x: i32, y: i32) {
+        for system in &mut self.mouse_systems {
+    		for entity in &mut self.entities {
+    			system.mouse_button_down_event(_ctx, entity, MouseButtonventData{button: button, x: x, y: y});
+    		}
+    	}
+    }
 
+    fn mouse_button_up_event(&mut self, _ctx: &mut Context, button: MouseButton, x: i32, y: i32) {
+        for system in &mut self.mouse_systems {
+    		for entity in &mut self.entities {
+    			system.mouse_button_up_event(_ctx, entity, MouseButtonventData{button: button, x: x, y: y});
+    		}
+    	}
+    }
 
-/// ECS types & properties
+    fn mouse_motion_event(&mut self, _ctx: &mut Context, _state: MouseState, x: i32, y: i32, xrel: i32, yrel: i32) {
+        for system in &mut self.mouse_systems {
+    		for entity in &mut self.entities {
+    			system.mouse_motion_event(_ctx, entity, MouseMotionEventData{state: _state, x: x, y: y, xrel: xrel, yrel: yrel});
+    		}
+    	}
+    }
 
-pub enum DrawEntity {
-	Image(graphics::Image),
-	Text(graphics::Text),
+    fn mouse_wheel_event(&mut self, _ctx: &mut Context, x: i32, y: i32) {
+        for system in &mut self.mouse_systems {
+    		for entity in &mut self.entities {
+    			system.mouse_wheel_event(_ctx, entity, MouseWheelEventData{x: x, y: y});
+    		}
+    	}
+    }
+
+    fn key_down_event(&mut self, _ctx: &mut Context, keycode: Keycode, keymod: Mod, repeat: bool) {
+        for system in &mut self.keyboard_systems {
+    		for entity in &mut self.entities {
+    			system.key_down_event(_ctx, entity, KeyboardEventData{keycode: keycode, keymod: keymod, repeat: repeat});
+    		}
+    	}
+    }
+    fn key_up_event(&mut self, _ctx: &mut Context, keycode: Keycode, keymod: Mod, repeat: bool) {
+        for system in &mut self.keyboard_systems {
+    		for entity in &mut self.entities {
+    			system.key_up_event(_ctx, entity, KeyboardEventData{keycode: keycode, keymod: keymod, repeat: repeat});
+    		}
+    	}
+    }
+
+    fn text_editing_event(&mut self, _ctx: &mut Context, text: String, start: i32, length: i32) {
+        println!(
+            "Text editing: {}, start {}, length: {}",
+            text, start, length
+        );
+    }
+
+    fn text_input_event(&mut self, _ctx: &mut Context, text: String) {
+        println!("Text input: {}", text);
+    }
+
+    fn controller_button_down_event(&mut self, _ctx: &mut Context, btn: Button, instance_id: i32) {
+        for system in &mut self.controller_systems {
+    		for entity in &mut self.entities {
+    			system.controller_button_down_event(_ctx, entity, ControllerButtonEventData{btn: btn, instance_id: instance_id});
+    		}
+    	}
+    }
+
+    fn controller_button_up_event(&mut self, _ctx: &mut Context, btn: Button, instance_id: i32) {
+        for system in &mut self.controller_systems {
+    		for entity in &mut self.entities {
+    			system.controller_button_up_event(_ctx, entity, ControllerButtonEventData{btn: btn, instance_id: instance_id});
+    		}
+    	}
+    }
+
+    fn controller_axis_event(&mut self, _ctx: &mut Context, axis: Axis, value: i16, instance_id: i32) {
+        for system in &mut self.controller_systems {
+    		for entity in &mut self.entities {
+    			system.controller_axis_event(_ctx, entity, ControllerAxisEventData{axis: axis, value: value, instance_id: instance_id});
+    		}
+    	}
+    }
+
+    fn focus_event(&mut self, _ctx: &mut Context, gained: bool) {
+        if gained {
+            println!("Focus gained");
+        } else {
+            println!("Focus lost");
+        }
+    }
 }
 
 /// ENTITY
 #[derive(Default)]
-pub struct Entity <C: Components> {
+pub struct Entity {
 	pub properties: EntityProperties,
-	pub components: C::ComponentsType,
+	pub components: Components,
 }
 
 pub struct EntityProperties {
 	pub name: String,
-    pub params: DrawParam,
-    pub drawable: DrawEntity, 
+    //pub transform: DrawParam,
+    //pub drawable: DrawEntity, 
 }
 
 impl Default for EntityProperties {
-	fn default () -> Self {
-		EntityProperties{ ..Default::default() }
+	fn default () -> EntityProperties {
+		EntityProperties{ name: String::from("default") }
 	}
 }
 
-/*
-impl Default for EntityProperties {
-    fn default() -> EntityProperties { 
-    	EntityProperties {name: Default::default(), ..Default::default() }
-    }
-}*/
+impl Entity {
 
-impl <C: Components> Entity <C> {
-
-	pub fn new (properties: EntityProperties, components: C::ComponentsType) -> Entity<C> {
+	pub fn new(properties: EntityProperties, components: Components) -> Entity {
 		Entity {properties:properties, components: components }
 	}
 }
 
-
-/// COMPONENT
-pub trait Components {
-
-    type ComponentsType;
-}
-
-
 /// SYSTEM
-pub trait SystemUpdate <C: Components>
+pub trait SystemUpdate
 {	
 	/// update the entity using this system
-	fn update (&self, entity: &mut Entity<C>);
+	fn update (&self, ctx: &mut Context, entity: &mut Entity);
 }
 
-pub trait SystemDraw<C: Components>
-{	
+pub trait SystemDraw {
 	/// each system has the ability to render to the ggez context
-	fn draw (&self, ctx: &mut Context, entity: &mut Entity<C>);
+	fn draw (&self, ctx: &mut Context, entity: &mut Entity);
 
+}
+
+pub struct KeyboardEventData {
+	pub keycode: Keycode, 
+	pub keymod: Mod, 
+	pub repeat: bool
 }
 
 pub trait SystemKeyboard
 {	
-	/// each system has the ability to render to the ggez context
-	fn draw (&self, ctx: &mut Context);
+	// Handle key events.  These just map keyboard events
+    fn key_down_event(&mut self, ctx: &mut Context, entity: &mut Entity, data: KeyboardEventData);
+    fn key_up_event(&mut self, _ctx: &mut Context, entity: &mut Entity, data: KeyboardEventData);
+}
 
+pub struct MouseButtonventData {
+	pub button: MouseButton,
+    pub x: i32,
+    pub y: i32,
+}
+
+pub struct MouseMotionEventData {
+	pub state: MouseState,
+    pub x: i32,
+    pub y: i32,
+    pub xrel: i32,
+    pub yrel: i32,
+}
+
+pub struct MouseWheelEventData {
+    pub x: i32,
+    pub y: i32,
+}
+
+pub trait SystemMouse
+{
+	fn mouse_button_down_event(&mut self, _ctx: &mut Context, entity: &mut Entity, data: MouseButtonventData);
+    fn mouse_button_up_event(&mut self, _ctx: &mut Context, entity: &mut Entity, data: MouseButtonventData);
+    fn mouse_motion_event(&mut self, _ctx: &mut Context, entity: &mut Entity, data: MouseMotionEventData);
+    fn mouse_wheel_event(&mut self, _ctx: &mut Context, entity: &mut Entity, data: MouseWheelEventData);
+}
+
+pub struct ControllerButtonEventData {
+	pub btn: Button, 
+	pub instance_id: i32
+}
+pub struct ControllerAxisEventData {
+	pub axis: Axis,
+    pub value: i16,
+    pub instance_id: i32,
+}
+pub trait SystemController {
+	fn controller_button_down_event(&mut self, _ctx: &mut Context, entity: &mut Entity, data: ControllerButtonEventData);
+    fn controller_button_up_event(&mut self, _ctx: &mut Context, entity: &mut Entity, data: ControllerButtonEventData);
+    fn controller_axis_event(&mut self, _ctx: &mut Context, entity: &mut Entity, data:ControllerAxisEventData);
 }

@@ -2,24 +2,25 @@
 
 extern crate ggez;
 
-use ggez::conf;
-use ggez::event;
-use ggez::ContextBuilder;
 use std::env;
 use std::path;
 
+use ggez::conf;
+use ggez::event;
+use ggez::{ContextBuilder};
+use ggez::graphics::DrawParam;
+use ggez::graphics;
+
+use ecs::{ECS, Entity, EntityProperties};
+use systems::{MoveSystem, DrawSystem};
+use components::Components;
+use components::{Position, Velocity, Graphics, DrawEntity};
 
 mod ecs;
 mod components;
 mod systems;
 
 /// MAIN
-
-use ecs::{ ECS, Entity };
-
-use components::CustomComponents;
-use components::*;
-use systems::MoveSystem;
 
 /// test git
 pub fn main() {
@@ -31,7 +32,7 @@ pub fn main() {
     let ctx = &mut cb.build().unwrap();
 
     // create new ecs engine
-    let ecs: &mut ECS<CustomComponents> = &mut ecs::ECS::new(ctx).unwrap();
+    let ecs: &mut ECS = &mut ecs::ECS::new(ctx).unwrap();
 
     // direct ctx asset path to asset folder
 	if let Ok(manifest_dir) = env::var("CARGO_MANIFEST_DIR") {
@@ -44,9 +45,23 @@ pub fn main() {
     }
 
     // create and register systems
-    if let Ok(m) = MoveSystem::new (ctx, ecs) {
-    	ecs.register_for_update(m);
-    }
+    ecs.register_for_update(MoveSystem);
+	ecs.register_for_draw(DrawSystem);
+
+	// create entities
+	let i = graphics::Image::new(ctx, "/dragon1.png").unwrap();
+	ecs.register_entity(
+		Entity::new(
+			EntityProperties{
+				name:"dragon".to_string()
+			}, 
+			Components { 
+				position: Some(Position { x:-939.0, y:0.0 }), 
+				velocity: Some(Velocity { x:3.0, y:0.0 }),
+				graphics: Some(Graphics {draw:DrawEntity::Image(i), transform: DrawParam { ..Default::default() }}),
+			}
+		)
+	);
 
 	// do gameloop and use ecs engine as ggez event handler
     if let Err(e) = event::run(ctx, ecs) {
