@@ -3,15 +3,22 @@ use ggez::GameResult;
 use ggez::graphics::DrawParam;
 use ggez::graphics;
 use ggez::event::{Keycode};
+use ggez::timer;
 
 use ecs::{ECS, Entity, EntityProperties, SystemUpdate, SystemDraw};
 use ecs::{SystemKeyboard, KeyboardEventData};
 use components::Components;
 use components::{Position, Velocity, Graphics, DrawEntity};
 
+use std::time::{Duration, SystemTime};
+
 pub struct MoveSystem;
 
 impl SystemUpdate for MoveSystem {
+	fn system_update (&mut self)
+	{
+
+	}
 	fn update (&self, _ctx:&mut Context, entity: &mut Entity)
 	{
 		if let (&mut Some(ref mut p), &mut Some(ref mut v), &mut Some(ref mut g)) = (&mut entity.components.position, &mut entity.components.velocity, &mut entity.components.graphics) {
@@ -38,6 +45,51 @@ impl SystemDraw for DrawSystem{
 				DrawEntity::Text(ref t) => graphics::draw_ex(ctx, t, g.transform).unwrap(),
 				DrawEntity::None => (),
 			}
+		}
+	}
+}
+
+pub struct SpriteSystem {
+	system_time: SystemTime,
+	delta_time: f32,
+}
+
+impl SpriteSystem {
+	pub fn new () -> SpriteSystem {
+		SpriteSystem {system_time: SystemTime::now(), delta_time:0.0 }
+	}
+}
+
+impl SystemUpdate for SpriteSystem {
+
+	fn system_update (&mut self)
+	{
+		self.delta_time = self.system_time.elapsed().unwrap().subsec_nanos() as f32 / 1000000000.0;
+		self.system_time = SystemTime::now();
+	}
+
+	fn update (&self, _ctx: &mut Context, entity: &mut Entity)
+	{
+		if let (&mut Some(ref mut s), &mut Some(ref mut g)) = (&mut entity.components.spritesheet, &mut entity.components.graphics) {
+
+			s.animation_time += self.delta_time;
+
+			s.index = (s.animation_time * s.fps).floor() as u32;
+
+			if s.index >= s.number_of_sprites {
+				s.index = 0;
+				s.animation_time = 0.0;
+			}
+
+			let horizontal_frame_count = s.image_size.x / s.frame.w;
+			let vertical_frame_count = s.image_size.y / s.frame.w;
+			let floating_index = s.index as f32;
+			let modx = (floating_index % horizontal_frame_count) / horizontal_frame_count;
+			let mody = (floating_index / horizontal_frame_count).floor() / vertical_frame_count;
+			let modw = s.frame.w / s.image_size.x;
+			let modh = s.frame.h / s.image_size.y;
+			g.transform.src = graphics::Rect::new (modx, mody, modw, modh);
+			println!("sprite rect: x={:?}, y={:?}, w={:?}, h={:?}", modx, mody, modw, modh);
 		}
 	}
 }
@@ -81,72 +133,3 @@ impl SystemKeyboard for FireSystem
         }
     }
 }
-
-
-/*	
-	extern crate ggez;
-
-	use ggez::graphics;
-	use ggez::graphics::{DrawParam};
-	use ggez::{Context, GameResult};
-	use ecs::{Entity, SystemUpdate, EntityProperties, DrawEntity};
-	use ecs::Components;
-	use ecs::ECS;
-	use components::CustomComponents;
-	use components::{Position, Velocity };
-
-
-	pub struct MoveSystem;
-
-	impl MoveSystem{
-		pub fn new <C: Components<ComponentsType = CustomComponents>> (ctx: &mut Context, ecs: &mut ECS<C>) -> GameResult<MoveSystem> {
-			let i = graphics::Image::new(ctx, "/dragon1.png")?;
-
-
-		    // create startup entities
-			ecs.register_entity(Entity::new_graphic(
-				EntityProperties{
-					name:"dragon".to_string(), 
-					drawable:DrawEntity::Image(i), 
-					transform: DrawParam { ..Default::default() }
-				}, 
-				CustomComponents { 
-					position: Some(Position { x:-939.0, y:0.0 }), 
-					velocity: Some(Velocity { x:3.0, y:0.0 })
-			}));
-
-			Ok(MoveSystem)
-		}
-	}
-
-	impl <C: Components<ComponentsType = CustomComponents>> SystemUpdate<C> for MoveSystem
-	{
-		fn update (&self, entity: &mut Entity<C>)
-		{
-			if let (&mut Some(ref mut p), &mut Some(ref mut v)) = (&mut entity.components.position, &mut entity.components.velocity) {
-			    //println!("Move position x:{:?}, y:{:?}, velocity x:{:?}, y:{:?}", &p.x, &p.y, &v.x, &v.y);
-			    p.x = p.x + v.x;
-			    p.y = p.y + v.y;
-
-			    if p.x > 939.0 { p.x = -939.0; }
-			    if p.y > 678.0 { p.y = -678.0; }
-
-			    entity.properties.transform.dest = graphics::Point2::new(p.x, p.y);
-			}
-		}
-
-		/*
-		fn draw (&self, ctx: &mut Context, entity: &mut Entity<C>){
-
-			if let &mut Some(ref mut p) = &mut entity.components.position {
-			    let dest = graphics::Point2::new(p.x, p.y);
-				graphics::draw_ex(ctx, &self.image, graphics::DrawParam{ dest: dest, ..Default::default() }).unwrap();
-			}
-			else {
-			    unimplemented!();
-			}
-			
-		}
-		*/
-	}
-*/

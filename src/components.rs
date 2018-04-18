@@ -1,6 +1,6 @@
 
 use ggez::graphics;
-use ggez::graphics::{ DrawParam };
+use ggez::graphics::{ DrawParam, Rect, Point2};
 
 //use ecs;
 
@@ -9,30 +9,15 @@ pub struct Components {
 	pub position: Option<Position>,
 	pub velocity: Option<Velocity>,
 	pub graphics: Option<Graphics>,
+	pub spritesheet: Option<Spritesheet>,
 }
 
 impl Default for Components {
 	fn default() -> Components { 
-    	Components { position: None, velocity: None, graphics: None }
+    	Components { position: None, velocity: None, graphics: None, spritesheet:None }
     }
 }
-
-/*
-pub struct CustomComponents	{
-	pub position: Option <Position>,
-	pub velocity: Option <Velocity>,
-}
-
-impl Default for CustomComponents {
-    fn default() -> CustomComponents { 
-    	CustomComponents { position: None, velocity: None }
-    }
-}
-
-impl ecs::Components for CustomComponents {
-	type ComponentsType = CustomComponents;
-}
-*/
+	
 /// Implementation of Components
 
 pub struct Position {
@@ -58,6 +43,15 @@ pub enum DrawEntity {
 
 impl Default for DrawEntity {
 	fn default () -> DrawEntity { DrawEntity::None }
+}
+
+pub struct Spritesheet {
+	pub animation_time: f32,
+	pub fps:f32,
+	pub image_size: Point2,
+	pub frame: Rect,
+	pub index: u32,
+	pub number_of_sprites: u32,
 }
 
 /*

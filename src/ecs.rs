@@ -62,6 +62,7 @@ impl event::EventHandler for ECS{
 
     fn update(&mut self, _ctx: &mut Context) -> GameResult<()> {
     	for system in &mut self.update_systems {
+    		system.system_update();
     		for entity in &mut self.entities {
     			system.update(_ctx, entity);
     		}
@@ -200,6 +201,7 @@ impl Entity {
 /// SYSTEM
 pub trait SystemUpdate
 {	
+	fn system_update(&mut self);
 	/// update the entity using this system
 	fn update (&self, ctx: &mut Context, entity: &mut Entity);
 }

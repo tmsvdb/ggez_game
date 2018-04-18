@@ -7,18 +7,15 @@ use std::path;
 
 use ggez::conf;
 use ggez::event;
-use ggez::{ContextBuilder};
-use ggez::graphics::DrawParam;
-use ggez::graphics;
+use ggez::ContextBuilder;
 
-use ecs::{ECS, Entity, EntityProperties};
-use systems::{MoveSystem, DrawSystem};
-use components::Components;
-use components::{Position, Velocity, Graphics, DrawEntity};
+use ecs::ECS;
+use systems::{MoveSystem, DrawSystem, SpriteSystem};
 
 mod ecs;
 mod components;
 mod systems;
+mod scene;
 
 /// MAIN
 
@@ -47,21 +44,9 @@ pub fn main() {
     // create and register systems
     ecs.register_for_update(MoveSystem);
 	ecs.register_for_draw(DrawSystem);
+	ecs.register_for_update(SpriteSystem::new());
 
-	// create entities
-	let i = graphics::Image::new(ctx, "/dragon1.png").unwrap();
-	ecs.register_entity(
-		Entity::new(
-			EntityProperties{
-				name:"dragon".to_string()
-			}, 
-			Components { 
-				position: Some(Position { x:-939.0, y:0.0 }), 
-				velocity: Some(Velocity { x:3.0, y:0.0 }),
-				graphics: Some(Graphics {draw:DrawEntity::Image(i), transform: DrawParam { ..Default::default() }}),
-			}
-		)
-	);
+	scene::Scene::setup(ctx, ecs);
 
 	// do gameloop and use ecs engine as ggez event handler
     if let Err(e) = event::run(ctx, ecs) {
