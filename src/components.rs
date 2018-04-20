@@ -46,12 +46,14 @@ impl Default for DrawEntity {
 }
 
 pub struct Spritesheet {
-	pub animation_time: f32,
+	pub playing_animation: usize,
+	pub animations: Vec<SpriteAnimation>,
+}
+
+pub struct SpriteAnimation {
+	pub time: f32,
 	pub fps:f32,
-	pub image_size: Point2,
-	pub frame: Rect,
-	pub index: u32,
-	pub number_of_sprites: u32,
+	pub frames: Vec<Rect>,
 }
 
 /*

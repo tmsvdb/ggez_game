@@ -72,24 +72,14 @@ impl SystemUpdate for SpriteSystem {
 	{
 		if let (&mut Some(ref mut s), &mut Some(ref mut g)) = (&mut entity.components.spritesheet, &mut entity.components.graphics) {
 
-			s.animation_time += self.delta_time;
+			let mut animation = &mut s.animations[s.playing_animation];
 
-			s.index = (s.animation_time * s.fps).floor() as u32;
-
-			if s.index >= s.number_of_sprites {
-				s.index = 0;
-				s.animation_time = 0.0;
-			}
-
-			let horizontal_frame_count = s.image_size.x / s.frame.w;
-			let vertical_frame_count = s.image_size.y / s.frame.w;
-			let floating_index = s.index as f32;
-			let modx = (floating_index % horizontal_frame_count) / horizontal_frame_count;
-			let mody = (floating_index / horizontal_frame_count).floor() / vertical_frame_count;
-			let modw = s.frame.w / s.image_size.x;
-			let modh = s.frame.h / s.image_size.y;
-			g.transform.src = graphics::Rect::new (modx, mody, modw, modh);
-			println!("sprite rect: x={:?}, y={:?}, w={:?}, h={:?}", modx, mody, modw, modh);
+			animation.time += self.delta_time;
+			g.transform.src = animation.frames[
+				match (animation.time * animation.fps).floor() as usize {
+				    i if i >= animation.frames.len() => { animation.time = 0.0; 0 },
+					i => i,
+				}];
 		}
 	}
 }

@@ -46,7 +46,7 @@ pub fn main() {
 	ecs.register_for_draw(DrawSystem);
 	ecs.register_for_update(SpriteSystem::new());
 
-	scene::Scene::setup(ctx, ecs);
+	scene::StartScene::setup(ctx, ecs);
 
 	// do gameloop and use ecs engine as ggez event handler
     if let Err(e) = event::run(ctx, ecs) {
