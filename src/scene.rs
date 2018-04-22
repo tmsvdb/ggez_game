@@ -4,7 +4,7 @@ use ggez::Context;
 
 use ecs::{ECS, Entity, EntityProperties};
 use components::Components;
-use components::{Position, Velocity, Graphics, DrawEntity, Spritesheet, SpriteAnimation};
+use components::{Directions, Selection, Graphics, DrawEntity, Spritesheet, SpriteAnimation};
 
 pub struct StartScene;
 
@@ -12,6 +12,7 @@ impl StartScene {
 	pub fn setup (ctx: &mut Context, ecs: &mut ECS) {
 
 		// create entities
+		/*
 		let dragon = graphics::Image::new(ctx, "/dragon1.png").unwrap();
 
 		ecs.register_entity(
@@ -27,11 +28,11 @@ impl StartScene {
 				}
 			)
 		);
-
+		*/
 
 		let spritesheet = graphics::Image::new(ctx, "/rifle_man_red_alert.png").unwrap();
 
-
+		/*
 		let w = 0.0512820512820513;
 		let h = 0.1073825503355705;
 		let y = 0.3624161073825503;
@@ -50,6 +51,35 @@ impl StartScene {
 				Rect::new(x4, y, w, h)
 			],
 		};
+		*/
+
+		let idle_animation = SpriteAnimation {
+			tag:"idle".to_string(),
+			time: 0.0,
+			fps:4.0,
+			frames: StartScene::normalize_animation_frames(
+				Point2::new(312.0,149.0),
+				vec![
+					Rect::new(75.0, 14.0, 16.0, 16.0)
+				]
+			),
+		};
+
+		let run_animation = SpriteAnimation {
+			tag:"run".to_string(),
+			time: 0.0,
+			fps:4.0,
+			frames: StartScene::normalize_animation_frames(
+				Point2::new(312.0,149.0),
+				vec![
+					Rect::new(69.0, 55.0, 16.0, 16.0),
+					Rect::new(87.0, 55.0, 16.0, 16.0),
+					Rect::new(102.0, 55.0, 16.0, 16.0),
+					Rect::new(117.0, 55.0, 16.0, 16.0)
+				]
+			),
+		};
+
 
 		ecs.register_entity(
 			Entity::new(
@@ -57,9 +87,11 @@ impl StartScene {
 					name:"spritesheet".to_string()
 				}, 
 				Components { 
-					graphics: Some(Graphics {draw:DrawEntity::Image(spritesheet), transform: DrawParam { scale: Point2::new(5.0,5.0), ..Default::default() }}),
+					directions: Some(Directions { arrived: true, goto: Point2::new (0.0,0.0)}),
+					selection: Some(Selection { selected: true }),
+					graphics: Some(Graphics {draw:DrawEntity::Image(spritesheet), transform: DrawParam { scale: Point2::new(1.0,1.0), ..Default::default() }}),
 					spritesheet: Some(Spritesheet { 
-						animations: vec![animation],
+						animations: vec![idle_animation, run_animation],
 						playing_animation: 0,
 					}),
 					..Default::default()
@@ -88,5 +120,18 @@ impl StartScene {
 			)
 		);
 		*/
+	}
+
+	fn normalize_animation_frames (image_size: Point2, mut frames: Vec<Rect>) -> Vec<Rect> {
+		let fx = 1.0 / image_size.x;
+		let fy = 1.0 / image_size.y;
+
+		for i in 0..frames.len() {
+			frames[i].x *= fx; 
+			frames[i].y *= fy; 
+			frames[i].w *= fx; 
+			frames[i].h *= fy; 
+		}
+		frames
 	}
 } 

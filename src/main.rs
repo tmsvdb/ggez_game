@@ -10,7 +10,7 @@ use ggez::event;
 use ggez::ContextBuilder;
 
 use ecs::ECS;
-use systems::{MoveSystem, DrawSystem, SpriteSystem};
+use systems::{MoveSystem, DrawSystem, SpriteSystem, SelectSystem};
 
 mod ecs;
 mod components;
@@ -45,6 +45,8 @@ pub fn main() {
     ecs.register_for_update(MoveSystem);
 	ecs.register_for_draw(DrawSystem);
 	ecs.register_for_update(SpriteSystem::new());
+    ecs.register_for_mouse(MoveSystem);
+    ecs.register_for_mouse(SelectSystem);
 
 	scene::StartScene::setup(ctx, ecs);
 

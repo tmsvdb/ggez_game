@@ -6,28 +6,27 @@ use ggez::graphics::{ DrawParam, Rect, Point2};
 
 /// COMPONENT
 pub struct Components {
-	pub position: Option<Position>,
-	pub velocity: Option<Velocity>,
+	pub directions: Option<Directions>,
+	pub selection: Option<Selection>,
 	pub graphics: Option<Graphics>,
 	pub spritesheet: Option<Spritesheet>,
 }
 
 impl Default for Components {
 	fn default() -> Components { 
-    	Components { position: None, velocity: None, graphics: None, spritesheet:None }
+    	Components { directions: None, selection: None, graphics: None, spritesheet:None }
     }
 }
 	
 /// Implementation of Components
 
-pub struct Position {
-	pub x: f32, 
-	pub y: f32,
+pub struct Selection {
+	pub selected: bool,
 }
 
-pub struct Velocity {
-	pub x: f32, 
-	pub y: f32,
+pub struct Directions {
+	pub arrived: bool,
+	pub goto: Point2,
 }
 
 pub struct Graphics {
@@ -51,6 +50,7 @@ pub struct Spritesheet {
 }
 
 pub struct SpriteAnimation {
+	pub tag: String,
 	pub time: f32,
 	pub fps:f32,
 	pub frames: Vec<Rect>,

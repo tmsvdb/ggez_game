@@ -4,12 +4,14 @@ use ggez::graphics;
 use ggez::event;
 use ggez::event::{Keycode, Mod, MouseButton, MouseState, Button, Axis};
 use ggez::{Context, GameResult};
-
+use std::time::{Duration, SystemTime};
 use components::Components;
 
 /// GEZZ implementaion and ECS implemenation
 pub struct ECS
 {
+    system_time: SystemTime,
+    delta_time: f32,
 	entities: Vec<Entity>,
 	update_systems: Vec<Box<SystemUpdate>>,
 	draw_systems: Vec<Box<SystemDraw>>,
@@ -22,6 +24,8 @@ impl ECS {
 
     pub fn new(_ctx: &mut Context) -> GameResult<ECS> {
         let s = ECS { 
+            system_time: SystemTime::now(),
+            delta_time: 0.0,
         	entities: Vec::new(), 
         	update_systems: Vec::new(),
         	draw_systems: Vec::new(),
@@ -56,15 +60,23 @@ impl ECS {
     	self.entities.push(entity);
     }
 
+    pub fn get_delta (&self) -> f32 {
+        self.delta_time
+    }
+
 }
 
 impl event::EventHandler for ECS{
 
     fn update(&mut self, _ctx: &mut Context) -> GameResult<()> {
+
+        self.delta_time = self.system_time.elapsed().unwrap().subsec_nanos() as f32 / 1000000000.0;
+        self.system_time = SystemTime::now();
+
     	for system in &mut self.update_systems {
     		system.system_update();
     		for entity in &mut self.entities {
-    			system.update(_ctx, entity);
+    			system.update(_ctx, entity, self.delta_time);
     		}
     	}
         Ok(())
@@ -203,7 +215,7 @@ pub trait SystemUpdate
 {	
 	fn system_update(&mut self);
 	/// update the entity using this system
-	fn update (&self, ctx: &mut Context, entity: &mut Entity);
+	fn update (&self, ctx: &mut Context, entity: &mut Entity, delta_time: f32);
 }
 
 pub trait SystemDraw {
