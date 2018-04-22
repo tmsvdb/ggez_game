@@ -10,11 +10,14 @@ use ggez::event;
 use ggez::ContextBuilder;
 
 use ecs::ECS;
-use systems::{MoveSystem, DrawSystem, SpriteSystem, SelectSystem};
+use systems::{MoveSystem, SpriteSystem, SelectSystem};
+
+use assets::Assets;
 
 mod ecs;
 mod components;
 mod systems;
+mod assets;
 mod scene;
 
 /// MAIN
@@ -29,7 +32,8 @@ pub fn main() {
     let ctx = &mut cb.build().unwrap();
 
     // create new ecs engine
-    let ecs: &mut ECS = &mut ecs::ECS::new(ctx).unwrap();
+    let assets = Assets::new();
+    let ecs: &mut ECS = &mut ecs::ECS::new(ctx, assets).unwrap();
 
     // direct ctx asset path to asset folder
 	if let Ok(manifest_dir) = env::var("CARGO_MANIFEST_DIR") {
@@ -41,11 +45,15 @@ pub fn main() {
         println!("Warning: coudn't mount path 'assets' to ctx filesystem");
     }
 
+    
+    
+
     // create and register systems
     ecs.register_for_update(MoveSystem);
-	ecs.register_for_draw(DrawSystem);
-	ecs.register_for_update(SpriteSystem::new());
+    ecs.register_for_draw(SpriteSystem);
+    ecs.register_for_update(SpriteSystem);
     ecs.register_for_mouse(MoveSystem);
+    ecs.register_for_draw(SelectSystem);
     ecs.register_for_mouse(SelectSystem);
 
 	scene::StartScene::setup(ctx, ecs);

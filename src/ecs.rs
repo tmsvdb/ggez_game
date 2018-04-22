@@ -6,10 +6,13 @@ use ggez::event::{Keycode, Mod, MouseButton, MouseState, Button, Axis};
 use ggez::{Context, GameResult};
 use std::time::{Duration, SystemTime};
 use components::Components;
+use assets::Assets;
+
 
 /// GEZZ implementaion and ECS implemenation
 pub struct ECS
 {
+    assets: Assets,
     system_time: SystemTime,
     delta_time: f32,
 	entities: Vec<Entity>,
@@ -22,8 +25,9 @@ pub struct ECS
 
 impl ECS {
 
-    pub fn new(_ctx: &mut Context) -> GameResult<ECS> {
+    pub fn new(_ctx: &mut Context, assets:Assets) -> GameResult<ECS> {
         let s = ECS { 
+            assets: assets,
             system_time: SystemTime::now(),
             delta_time: 0.0,
         	entities: Vec::new(), 
@@ -34,6 +38,10 @@ impl ECS {
         	controller_systems: Vec::new(),
         };
         Ok(s)
+    }
+
+    pub fn get_assets (&mut self) -> &mut Assets {
+        &mut self.assets
     }
 
     pub fn register_for_update<S: SystemUpdate + 'static>(&mut self, system: S) {
@@ -86,7 +94,7 @@ impl event::EventHandler for ECS{
     	graphics::clear(ctx);
     	for system in &mut self.draw_systems {
     		for entity in &mut self.entities {
-    			system.draw(ctx, entity);
+    			system.draw(ctx, entity, &self.assets);
     		}
     	}
     	graphics::present(ctx);
@@ -215,12 +223,12 @@ pub trait SystemUpdate
 {	
 	fn system_update(&mut self);
 	/// update the entity using this system
-	fn update (&self, ctx: &mut Context, entity: &mut Entity, delta_time: f32);
+	fn update (&self, ctx: &mut Context, entity: &mut Entity, _delta_time: f32);
 }
 
 pub trait SystemDraw {
 	/// each system has the ability to render to the ggez context
-	fn draw (&self, ctx: &mut Context, entity: &mut Entity);
+	fn draw (&self, ctx: &mut Context, entity: &mut Entity, _assets: &Assets);
 
 }
 

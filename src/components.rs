@@ -8,19 +8,23 @@ use ggez::graphics::{ DrawParam, Rect, Point2};
 pub struct Components {
 	pub directions: Option<Directions>,
 	pub selection: Option<Selection>,
-	pub graphics: Option<Graphics>,
 	pub spritesheet: Option<Spritesheet>,
 }
 
 impl Default for Components {
 	fn default() -> Components { 
-    	Components { directions: None, selection: None, graphics: None, spritesheet:None }
+    	Components { 
+    		directions: None, 
+    		selection: None, 
+    		spritesheet: None 
+    	}
     }
 }
 	
 /// Implementation of Components
 
 pub struct Selection {
+	pub sprite: Sprite,
 	pub selected: bool,
 }
 
@@ -29,6 +33,7 @@ pub struct Directions {
 	pub goto: Point2,
 }
 
+/*
 pub struct Graphics {
 	pub transform: DrawParam, //see *1
     pub draw: DrawEntity, 
@@ -42,9 +47,17 @@ pub enum DrawEntity {
 
 impl Default for DrawEntity {
 	fn default () -> DrawEntity { DrawEntity::None }
+}*/
+
+pub struct Sprite {
+	pub visible: bool,
+	pub image: usize,
+	pub transform: graphics::Rect,
+	pub frame: graphics::Rect,
 }
 
 pub struct Spritesheet {
+	pub sprite: Sprite,
 	pub playing_animation: usize,
 	pub animations: Vec<SpriteAnimation>,
 }
@@ -53,7 +66,7 @@ pub struct SpriteAnimation {
 	pub tag: String,
 	pub time: f32,
 	pub fps:f32,
-	pub frames: Vec<Rect>,
+	pub frames: Vec<graphics::Rect>,
 }
 
 /*

@@ -4,7 +4,9 @@ use ggez::Context;
 
 use ecs::{ECS, Entity, EntityProperties};
 use components::Components;
-use components::{Directions, Selection, Graphics, DrawEntity, Spritesheet, SpriteAnimation};
+use components::{Directions, Selection, Sprite, Spritesheet, SpriteAnimation};
+
+use assets::Assets;
 
 pub struct StartScene;
 
@@ -30,7 +32,8 @@ impl StartScene {
 		);
 		*/
 
-		let spritesheet = graphics::Image::new(ctx, "/rifle_man_red_alert.png").unwrap();
+		let spritesheed_image = graphics::Image::new(ctx, "/rifle_man_red_alert_trans.png").expect("Scene: load /rifle_man_red_alert_trans.png failed!");
+		let spritesheed_id = ecs.get_assets().add_image(spritesheed_image);	
 
 		/*
 		let w = 0.0512820512820513;
@@ -66,6 +69,7 @@ impl StartScene {
 		};
 
 		let run_animation = SpriteAnimation {
+
 			tag:"run".to_string(),
 			time: 0.0,
 			fps:4.0,
@@ -84,13 +88,35 @@ impl StartScene {
 		ecs.register_entity(
 			Entity::new(
 				EntityProperties{
-					name:"spritesheet".to_string()
+					name:"unit".to_string()
 				}, 
 				Components { 
-					directions: Some(Directions { arrived: true, goto: Point2::new (0.0,0.0)}),
-					selection: Some(Selection { selected: true }),
-					graphics: Some(Graphics {draw:DrawEntity::Image(spritesheet), transform: DrawParam { scale: Point2::new(1.0,1.0), ..Default::default() }}),
+					directions: Some(Directions { 
+							arrived: true, 
+							goto: Point2::new (0.0,0.0)
+						}),
+					selection: Some(Selection { 
+							sprite: Sprite {
+								visible: false,
+								image: spritesheed_id,
+								transform: Rect::new(0.0,0.0,16.0,16.0),
+								frame: StartScene::normalize_sprite_frame (
+									Point2::new(312.0,149.0), 
+									Rect::new(133.0, 55.0, 16.0, 16.0) 
+								),
+							},
+							selected: true 
+						}),
 					spritesheet: Some(Spritesheet { 
+						sprite: Sprite {
+								visible: false,
+								image: spritesheed_id,
+								transform: Rect::new(0.0,0.0,16.0,16.0),
+								frame: StartScene::normalize_sprite_frame (
+									Point2::new(312.0,149.0), 
+									Rect::new(75.0, 14.0, 16.0, 16.0) 
+								),
+							},
 						animations: vec![idle_animation, run_animation],
 						playing_animation: 0,
 					}),
@@ -133,5 +159,17 @@ impl StartScene {
 			frames[i].h *= fy; 
 		}
 		frames
+	}
+
+	fn normalize_sprite_frame (image_size: Point2, mut frame: Rect) -> Rect {
+		let fx = 1.0 / image_size.x;
+		let fy = 1.0 / image_size.y;
+
+		frame.x *= fx; 
+		frame.y *= fy; 
+		frame.w *= fx; 
+		frame.h *= fy; 
+
+		frame
 	}
 } 
