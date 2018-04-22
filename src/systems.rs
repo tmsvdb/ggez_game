@@ -34,42 +34,29 @@ impl SystemUpdate for MoveSystem {
 		if let (&mut Some(ref mut direct), &mut Some(ref mut g), &mut Some(ref mut sprite)) = (&mut entity.components.directions, &mut entity.components.graphics, &mut entity.components.spritesheet) {
 		    if !direct.arrived
 		    {
-		    	if g.transform.dest.y < direct.goto.y {
-		    		g.transform.dest.y += delta_time * 3.0;
-		    		if g.transform.dest.y > direct.goto.y {
-		    			g.transform.dest.y = direct.goto.y;
-		    		}
-		    	}
-		    	else if g.transform.dest.y > direct.goto.y {
-		    	    g.transform.dest.y -= delta_time * 3.0;
-		    	    if g.transform.dest.y < direct.goto.y {
-		    			g.transform.dest.y = direct.goto.y;
-		    		}
-		    	}
+		    	g.transform.dest.y = match g.transform.dest.y {
+		    		y if y < direct.goto.y && y + (delta_time * 10.0) <= direct.goto.y => y + (delta_time * 10.0),
+		    		y if y > direct.goto.y && y - (delta_time * 10.0) >= direct.goto.y => y - (delta_time * 10.0),
+		    		_ => direct.goto.y
+		    	};
 
-		    	if g.transform.dest.x < direct.goto.x {
-		    		g.transform.dest.x += delta_time * 3.0;
-		    		if g.transform.dest.x > direct.goto.x {
-		    			g.transform.dest.x = direct.goto.x;
-		    		}
-		    	}
-		    	else if g.transform.dest.x > direct.goto.x {
-		    	    g.transform.dest.x -= delta_time * 3;
-		    	    if g.transform.dest.x < direct.goto.x {
-		    			g.transform.dest.x = direct.goto.x;
-		    		}
-		    	}
+		    	g.transform.dest.x = match g.transform.dest.x {
+		    		x if x < direct.goto.x && x + (delta_time * 10.0) <= direct.goto.x => x + (delta_time * 10.0),
+		    		x if x > direct.goto.x && x - (delta_time * 10.0) >= direct.goto.x => x - (delta_time * 10.0),
+		    		_ => direct.goto.x
+		    	};
 
 		    	if  g.transform.dest.x == direct.goto.x &&  g.transform.dest.y == direct.goto.y {
 		    		direct.arrived = true;
 		    		sprite.playing_animation = 0;
 		    	}
-
-		    } else {
-
-		    	if sprite.playing_animation != 0 {
-		    		sprite.playing_animation = 0;
+		    	else if sprite.playing_animation != 1 {
+		    	    sprite.playing_animation = 1;
 		    	}
+
+		    } else if sprite.playing_animation != 0 {
+		    	
+		    	sprite.playing_animation = 0;
 		    }
 		}
 	}
@@ -123,11 +110,11 @@ impl SystemUpdate for SpriteSystem {
 		self.system_time = SystemTime::now();
 	}
 
-	fn update (&self, _ctx: &mut Context, entity: &mut Entity, delta_time: f32)
+	fn update (&self, _ctx: &mut Context, entity: &mut Entity, _delta_time: f32)
 	{
 		if let (&mut Some(ref mut s), &mut Some(ref mut g)) = (&mut entity.components.spritesheet, &mut entity.components.graphics) {
 
-			let mut animation = &mut s.animations[s.playing_animation];
+			let animation = &mut s.animations[s.playing_animation];
 
 			animation.time += self.delta_time;
 			g.transform.src = animation.frames[
