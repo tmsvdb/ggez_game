@@ -4,9 +4,12 @@ use ggez::Context;
 
 use ecs::{ECS, Entity, EntityProperties};
 use components::Components;
-use components::{Directions, Selection, Sprite, Spritesheet, SpriteAnimation};
+use components::{Navigation, Selection, Sprite, Spritesheet, SpriteAnimation, DebugStats};
 
 use assets::Assets;
+
+extern crate rand;
+use rand::Rng;
 
 pub struct StartScene;
 
@@ -35,6 +38,9 @@ impl StartScene {
 		let spritesheed_image = graphics::Image::new(ctx, "/rifle_man_red_alert_trans.png").expect("Scene: load /rifle_man_red_alert_trans.png failed!");
 		let spritesheed_id = ecs.get_assets().add_image(spritesheed_image);	
 
+		//let font = graphics::Font::new(ctx, "/DejaVuSerif.ttf", 18).expect("Scene: load /DejaVuSerif.ttf failed!");
+		//let font_id = ecs.get_assets().add_font(font);	
+
 		/*
 		let w = 0.0512820512820513;
 		let h = 0.1073825503355705;
@@ -55,6 +61,8 @@ impl StartScene {
 			],
 		};
 		*/
+
+		/*
 
 		let idle_animation = SpriteAnimation {
 			tag:"idle".to_string(),
@@ -82,70 +90,100 @@ impl StartScene {
 					Rect::new(117.0, 55.0, 16.0, 16.0)
 				]
 			),
-		};
+		};*/
 
+		for i in 0..10
+		{
+			let go = GameObject;
 
-		ecs.register_entity(
-			Entity::new(
-				EntityProperties{
-					name:"unit".to_string()
-				}, 
-				Components { 
-					directions: Some(Directions { 
-							arrived: true, 
-							goto: Point2::new (0.0,0.0)
-						}),
-					selection: Some(Selection { 
+			/*
+			let xpos = rand::thread_rng().gen_range(0, 900);
+			let ypos = rand::thread_rng().gen_range(0, 650);
+
+			let idle_animation = SpriteAnimation {
+				tag:"idle".to_string(),
+				time: 0.0,
+				fps:4.0,
+				frames: StartScene::normalize_animation_frames(
+					Point2::new(312.0,149.0),
+					vec![
+						Rect::new(75.0, 14.0, 16.0, 16.0)
+					]
+				),
+			};
+
+			let run_animation = SpriteAnimation {
+
+				tag:"run".to_string(),
+				time: 0.0,
+				fps:4.0,
+				frames: StartScene::normalize_animation_frames(
+					Point2::new(312.0,149.0),
+					vec![
+						Rect::new(69.0, 55.0, 16.0, 16.0),
+						Rect::new(87.0, 55.0, 16.0, 16.0),
+						Rect::new(102.0, 55.0, 16.0, 16.0),
+						Rect::new(117.0, 55.0, 16.0, 16.0)
+					]
+				),
+			};
+			ecs.register_entity(
+				Entity::new(
+					EntityProperties{
+						name:format!("unit {:?}", i)
+					}, 
+					Components { 
+						navigation: Some(Navigation { 
+								location: Point2::new(xpos as f32,ypos as f32),
+								arrived: true, 
+								goto: Point2::new (0.0,0.0)
+							}),
+						selection: Some(Selection { 
+								sprite: Sprite {
+									visible: false,
+									image: spritesheed_id,
+									transform: Rect::new(0.0,0.0,16.0,16.0),
+									frame: StartScene::normalize_sprite_frame (
+										Point2::new(312.0,149.0), 
+										Rect::new(133.0, 55.0, 16.0, 16.0) 
+									),
+								},
+								selected: true 
+							}),
+						spritesheet: Some(Spritesheet { 
 							sprite: Sprite {
-								visible: false,
-								image: spritesheed_id,
-								transform: Rect::new(0.0,0.0,16.0,16.0),
-								frame: StartScene::normalize_sprite_frame (
-									Point2::new(312.0,149.0), 
-									Rect::new(133.0, 55.0, 16.0, 16.0) 
-								),
-							},
-							selected: true 
+									visible: false,
+									image: spritesheed_id,
+									transform: Rect::new(0.0,0.0,16.0,16.0),
+									frame: StartScene::normalize_sprite_frame (
+										Point2::new(312.0,149.0), 
+										Rect::new(75.0, 14.0, 16.0, 16.0) 
+									),
+								},
+							animations: vec![idle_animation, run_animation],
+							playing_animation: 0,
 						}),
-					spritesheet: Some(Spritesheet { 
-						sprite: Sprite {
-								visible: false,
-								image: spritesheed_id,
-								transform: Rect::new(0.0,0.0,16.0,16.0),
-								frame: StartScene::normalize_sprite_frame (
-									Point2::new(312.0,149.0), 
-									Rect::new(75.0, 14.0, 16.0, 16.0) 
-								),
-							},
-						animations: vec![idle_animation, run_animation],
-						playing_animation: 0,
-					}),
-					..Default::default()
-				}
-			)
-		);
+						..Default::default()
+					}
+				)
+			);
+			*/
+		}
 
-		/*
+		let font = graphics::Font::default_font().expect("default font not working!");
+		
 		ecs.register_entity(
 			Entity::new(
 				EntityProperties{
 					name:"spritesheet".to_string()
 				}, 
 				Components { 
-					graphics: Some(Graphics {draw:DrawEntity::Image(spritesheet), transform: DrawParam { ..Default::default() }}),
-					spritesheet: Some(Spritesheet { 
-						animation_time: 0.0,
-						fps: 12.0,
-						image_size: Point2::new(1024.0, 157.0),
-						frame: Rect{x:0.0,y:0.0,w:128.0, h:157.0},
-						index: 0,
-						number_of_sprites: 8,
-					}),
+					debug: Some(DebugStats{font: font, fps_str: "first frame".to_string()}),
 					..Default::default()
 				}
 			)
 		);
-		*/
+		
 	}
 
 	fn normalize_animation_frames (image_size: Point2, mut frames: Vec<Rect>) -> Vec<Rect> {

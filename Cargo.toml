@@ -4,4 +4,5 @@ version = "0.1.0"
 authors = ["Thomas"]
 
 [dependencies]
-ggez = "0.4"
+sdl2 = "0.23.0"
+rand = "0.4"

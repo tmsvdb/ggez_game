@@ -8,10 +8,35 @@ use ggez::timer;
 use ecs::{ECS, Entity, EntityProperties, SystemUpdate, SystemDraw, SystemMouse};
 use ecs::{SystemKeyboard, KeyboardEventData, MouseButtonventData, MouseMotionEventData, MouseWheelEventData};
 use components::Components;
-use components::{Directions, Selection, Spritesheet, Sprite};
+use components::{Navigation, Selection, Spritesheet, Sprite};
 
 use std::time::{Duration, SystemTime};
 use assets::Assets;
+
+pub struct DebugSystem;
+impl SystemUpdate for DebugSystem {
+
+	fn system_update(&mut self) {}
+	/// update the entity using this system
+	fn update (&self, ctx: &mut Context, entity: &mut Entity, _delta_time: f32){
+		if let Some(ref mut d) = entity.components.debug {
+			d.fps_str = format!("Fps: {}", timer::get_fps(ctx));			
+		}		
+	}	
+}
+
+impl SystemDraw for DebugSystem {
+	fn draw (&self, ctx: &mut Context, entity: &mut Entity, _assets: &Assets)
+	{
+		if let Some(ref mut d) = entity.components.debug {
+			
+    		let fps_text = graphics::Text::new(ctx, &d.fps_str, &d.font).unwrap();		
+			let params = DrawParam {..Default::default() };
+
+    		graphics::draw_ex(ctx, &fps_text, params).unwrap();
+		}
+	}
+}
 
 pub struct SelectSystem;
 
@@ -20,7 +45,7 @@ impl SystemMouse for SelectSystem {
 	{
 		if _data.button == MouseButton::Left {
 
-			println!("button down by select system");
+			//println!("button down by select system");
 
 			if let (&mut Some(ref mut select), &mut Some(ref mut sheet)) = (&mut _entity.components.selection, &mut _entity.components.spritesheet) {
 				
@@ -30,7 +55,7 @@ impl SystemMouse for SelectSystem {
 				select.selected = _data.x as f32 >= t.x && _data.y as f32 <= t.x + t.w 
 									&& _data.y as f32 >= t.y && _data.y as f32 <= t.y + t.h;
 
-				println!("button pos=({:?},{:?}), ent rect=({:?},{:?},{:?},{:?}", _data.x, _data.y, t.x, t.y, t.w, t.h);
+				//println!("button pos=({:?},{:?}), ent rect=({:?},{:?},{:?},{:?}", _data.x, _data.y, t.x, t.y, t.w, t.h);
 			}
 		}
 	}
@@ -42,13 +67,13 @@ impl SystemMouse for SelectSystem {
 impl SystemDraw for SelectSystem {
 	fn draw (&self, ctx: &mut Context, entity: &mut Entity, _assets: &Assets)
 	{
-		if let Some(ref mut s) = entity.components.selection {
+		if let (&mut Some(ref mut nav), &mut Some(ref mut select)) = (&mut entity.components.navigation, &mut entity.components.selection) {
 
 			//println!("get asset at {:?}", s.sprite.image);
-			if s.selected
+			if select.selected
 			{
-				let image = _assets.get_image_at(s.sprite.image).expect("SelectSystem: image not found in assets!");
-				let params = DrawParam { src: s.sprite.frame, dest: Point2::new(s.sprite.transform.x, s.sprite.transform.y), ..Default::default()	};
+				let image = _assets.get_image_at(select.sprite.image).expect("SelectSystem: image not found in assets!");
+				let params = DrawParam { src: select.sprite.frame, dest:Point2::new(nav.location.x.round(), nav.location.y.round()), ..Default::default()	};
 				graphics::draw_ex(ctx, image, params).unwrap();
 			}
 		}
@@ -64,23 +89,23 @@ impl SystemUpdate for MoveSystem {
 	}
 	fn update (&self, _ctx:&mut Context, entity: &mut Entity, delta_time: f32)
 	{
-		if let (&mut Some(ref mut direct), &mut Some(ref mut s)) = (&mut entity.components.directions, &mut entity.components.spritesheet) {
-		    if !direct.arrived
+		if let (&mut Some(ref mut nav), &mut Some(ref mut s)) = (&mut entity.components.navigation, &mut entity.components.spritesheet) {
+		    if !nav.arrived
 		    {
-		    	s.sprite.transform.y = match s.sprite.transform.y {
-		    		y if y < direct.goto.y && y + (delta_time * 10.0) <= direct.goto.y => y + (delta_time * 10.0),
-		    		y if y > direct.goto.y && y - (delta_time * 10.0) >= direct.goto.y => y - (delta_time * 10.0),
-		    		_ => direct.goto.y
+		    	nav.location.y = match nav.location.y {
+		    		y if y < nav.goto.y && y + (delta_time * 10.0) <= nav.goto.y => y + (delta_time * 10.0),
+		    		y if y > nav.goto.y && y - (delta_time * 10.0) >= nav.goto.y => y - (delta_time * 10.0),
+		    		_ => nav.goto.y
 		    	};
 
-		    	s.sprite.transform.x = match s.sprite.transform.x {
-		    		x if x < direct.goto.x && x + (delta_time * 10.0) <= direct.goto.x => x + (delta_time * 10.0),
-		    		x if x > direct.goto.x && x - (delta_time * 10.0) >= direct.goto.x => x - (delta_time * 10.0),
-		    		_ => direct.goto.x
+		    	nav.location.x = match nav.location.x {
+		    		x if x < nav.goto.x && x + (delta_time * 10.0) <= nav.goto.x => x + (delta_time * 10.0),
+		    		x if x > nav.goto.x && x - (delta_time * 10.0) >= nav.goto.x => x - (delta_time * 10.0),
+		    		_ => nav.goto.x
 		    	};
 
-		    	if  s.sprite.transform.x == direct.goto.x &&  s.sprite.transform.y == direct.goto.y {
-		    		direct.arrived = true;
+		    	if  nav.location.x == nav.goto.x &&  nav.location.y == nav.goto.y {
+		    		nav.arrived = true;
 		    		s.playing_animation = 0;
 		    	}
 		    	else if s.playing_animation != 1 {
@@ -98,10 +123,10 @@ impl SystemUpdate for MoveSystem {
 impl SystemMouse for MoveSystem {
     fn mouse_button_down_event(&mut self, _ctx: &mut Context, _entity: &mut Entity, _data: MouseButtonventData){
     	if _data.button == MouseButton::Right {
-	    	if let (&mut Some(ref mut direct), &mut Some(ref mut select)) = (&mut _entity.components.directions, &mut _entity.components.selection){
+	    	if let (&mut Some(ref mut nav), &mut Some(ref mut select)) = (&mut _entity.components.navigation, &mut _entity.components.selection){
 	    		if select.selected {
-	    			direct.goto = Point2::new (_data.x as f32, _data.y as f32);
-	    			direct.arrived = false;
+	    			nav.goto = Point2::new (_data.x as f32, _data.y as f32);
+	    			nav.arrived = false;
 	    		}
 	    	}
     	}
@@ -135,12 +160,12 @@ impl SystemUpdate for SpriteSystem {
 
 	fn update (&self, _ctx: &mut Context, entity: &mut Entity, delta_time: f32)
 	{
-		if let Some(ref mut s) = entity.components.spritesheet {
+		if let Some(ref mut sheet) = entity.components.spritesheet {
 
-			let animation = &mut s.animations[s.playing_animation];
+			let animation = &mut sheet.animations[sheet.playing_animation];
 
 			animation.time += delta_time;
-			s.sprite.frame = animation.frames[
+			sheet.sprite.frame = animation.frames[
 				match (animation.time * animation.fps).floor() as usize {
 				    i if i >= animation.frames.len() => { animation.time = 0.0; 0 },
 					i => i,
@@ -152,12 +177,12 @@ impl SystemUpdate for SpriteSystem {
 impl SystemDraw for SpriteSystem {
 	fn draw (&self, ctx: &mut Context, entity: &mut Entity, _assets: &Assets)
 	{
-		if let Some(ref mut s) = entity.components.spritesheet {
+		if let (&mut Some(ref mut nav), &mut Some(ref mut sheet)) = (&mut entity.components.navigation, &mut entity.components.spritesheet) {
 
 			//println!("get asset at {:?}", s.sprite.image);
 
-			let image = _assets.get_image_at(s.sprite.image).expect("SpriteSystem: image not found in assets!");
-			let params = DrawParam { src: s.sprite.frame, dest: Point2::new(s.sprite.transform.x, s.sprite.transform.y), ..Default::default()};
+			let image = _assets.get_image_at(sheet.sprite.image).expect("SpriteSystem: image not found in assets!");
+			let params = DrawParam { src: sheet.sprite.frame, dest: Point2::new(nav.location.x.round(), nav.location.y.round()), ..Default::default()};
 			graphics::draw_ex(ctx, image, params).unwrap();
 		}
 	}

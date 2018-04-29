@@ -15,12 +15,12 @@ pub struct ECS
     assets: Assets,
     system_time: SystemTime,
     delta_time: f32,
-	entities: Vec<Entity>,
-	update_systems: Vec<Box<SystemUpdate>>,
-	draw_systems: Vec<Box<SystemDraw>>,
-	keyboard_systems: Vec<Box<SystemKeyboard>>,
-	mouse_systems: Vec<Box<SystemMouse>>,
-	controller_systems: Vec<Box<SystemController>>,
+	entities: Vec<Box<event::EventHandler>>,/*
+	update_list: Vec<Box<event::EventHandler>>,
+	draw_list: Vec<Box<event::EventHandler>>,
+	keyboard_list: Vec<Box<event::EventHandler>>,
+	mouse_list: Vec<Box<event::EventHandler>>,
+	controller_list: Vec<Box<event::EventHandler>>,*/
 }
 
 impl ECS {
@@ -30,12 +30,12 @@ impl ECS {
             assets: assets,
             system_time: SystemTime::now(),
             delta_time: 0.0,
-        	entities: Vec::new(), 
-        	update_systems: Vec::new(),
-        	draw_systems: Vec::new(),
-        	keyboard_systems: Vec::new(),
-        	mouse_systems: Vec::new(),
-        	controller_systems: Vec::new(),
+        	entities: Vec::new(), /*
+        	update_list: Vec::new(),
+        	draw_list: Vec::new(),
+        	keyboard_list: Vec::new(),
+        	mouse_list: Vec::new(),
+        	controller_list: Vec::new(),*/
         };
         Ok(s)
     }
@@ -44,29 +44,33 @@ impl ECS {
         &mut self.assets
     }
 
-    pub fn register_for_update<S: SystemUpdate + 'static>(&mut self, system: S) {
-    	self.update_systems.push(Box::new(system));
+    pub fn register_entity<T: event::EventHandler + 'static>(&mut self, entity: T) {
+    	self.entities.push(Box::new(entity));
+    }
+    /*
+    pub fn register_for_update<S: event::EventHandler + 'static>(&mut self, system: S) {
+    	self.update_list.push(Box::new(system));
     }
 
-    pub fn register_for_draw<S: SystemDraw + 'static>(&mut self, system: S) {
-    	self.draw_systems.push(Box::new(system));
+    pub fn register_for_draw<S: event::EventHandler + 'static>(&mut self, system: S) {
+    	self.draw_list.push(Box::new(system));
     }
 
-    pub fn register_for_keyboard<S: SystemKeyboard + 'static>(&mut self, system: S) {
-    	self.keyboard_systems.push(Box::new(system));
+    pub fn register_for_keyboard<S: event::EventHandler + 'static>(&mut self, system: S) {
+    	self.keyboard_list.push(Box::new(system));
     }
 
-    pub fn register_for_mouse<S: SystemMouse + 'static>(&mut self, system: S) {
-    	self.mouse_systems.push(Box::new(system));
+    pub fn register_for_mouse<S: event::EventHandler + 'static>(&mut self, system: S) {
+    	self.mouse_list.push(Box::new(system));
     }
 
-    pub fn register_for_controller<S: SystemController + 'static>(&mut self, system: S) {
-    	self.controller_systems.push(Box::new(system));
+    pub fn register_for_controller<S: event::EventHandler + 'static>(&mut self, system: S) {
+    	self.controller_list.push(Box::new(system));
     }
 
     pub fn register_entity (&mut self, entity: Entity) {
     	self.entities.push(entity);
-    }
+    }*/
 
     pub fn get_delta (&self) -> f32 {
         self.delta_time
@@ -81,71 +85,111 @@ impl event::EventHandler for ECS{
         self.delta_time = self.system_time.elapsed().unwrap().subsec_nanos() as f32 / 1000000000.0;
         self.system_time = SystemTime::now();
 
-    	for system in &mut self.update_systems {
+        for entity in &mut self.entities{
+        	entity.update(_ctx);
+        }
+        /*
+    	for system in &mut self.update_list {
     		system.system_update();
     		for entity in &mut self.entities {
     			system.update(_ctx, entity, self.delta_time);
     		}
-    	}
+    	}*/
         Ok(())
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult<()> {
     	graphics::clear(ctx);
-    	for system in &mut self.draw_systems {
+
+    	for entity in &mut self.entities{
+        	entity.update(ctx);
+        }
+    	/*
+    	for system in &mut self.draw_list {
     		for entity in &mut self.entities {
     			system.draw(ctx, entity, &self.assets);
     		}
     	}
+    	*/
     	graphics::present(ctx);
         Ok(())
     }
 
     fn mouse_button_down_event(&mut self, _ctx: &mut Context, button: MouseButton, x: i32, y: i32) {
-        for system in &mut self.mouse_systems {
+    	/*
+        for system in &mut self.mouse_list {
     		for entity in &mut self.entities {
     			system.mouse_button_down_event(_ctx, entity, MouseButtonventData{button: button, x: x, y: y});
     		}
     	}
+    	*/
+    	for entity in &mut self.entities{
+        	entity.mouse_button_down_event(_ctx, button, x, y);
+        }
     }
 
     fn mouse_button_up_event(&mut self, _ctx: &mut Context, button: MouseButton, x: i32, y: i32) {
-        for system in &mut self.mouse_systems {
+        /*
+        for system in &mut self.mouse_list {
     		for entity in &mut self.entities {
     			system.mouse_button_up_event(_ctx, entity, MouseButtonventData{button: button, x: x, y: y});
     		}
     	}
+    	*/
+    	for entity in &mut self.entities{
+        	entity.mouse_button_down_event(_ctx, button, x, y);
+        }
     }
 
     fn mouse_motion_event(&mut self, _ctx: &mut Context, _state: MouseState, x: i32, y: i32, xrel: i32, yrel: i32) {
-        for system in &mut self.mouse_systems {
+        /*
+        for system in &mut self.mouse_list {
     		for entity in &mut self.entities {
     			system.mouse_motion_event(_ctx, entity, MouseMotionEventData{state: _state, x: x, y: y, xrel: xrel, yrel: yrel});
     		}
     	}
+    	*/
+    	for entity in &mut self.entities{
+        	entity.mouse_motion_event(_ctx, _state, x, y, xrel, yrel);
+        }
     }
 
     fn mouse_wheel_event(&mut self, _ctx: &mut Context, x: i32, y: i32) {
-        for system in &mut self.mouse_systems {
+        /*
+        for system in &mut self.mouse_list {
     		for entity in &mut self.entities {
     			system.mouse_wheel_event(_ctx, entity, MouseWheelEventData{x: x, y: y});
     		}
     	}
+    	*/
+    	for entity in &mut self.entities{
+        	entity.mouse_wheel_event(_ctx, x, y);
+        }
     }
 
     fn key_down_event(&mut self, _ctx: &mut Context, keycode: Keycode, keymod: Mod, repeat: bool) {
-        for system in &mut self.keyboard_systems {
+        /*
+        for system in &mut self.keyboard_list {
     		for entity in &mut self.entities {
     			system.key_down_event(_ctx, entity, KeyboardEventData{keycode: keycode, keymod: keymod, repeat: repeat});
     		}
     	}
+    	*/
+    	for entity in &mut self.entities{
+        	entity.key_down_event(_ctx, keycode, keymod, repeat);
+        }
     }
     fn key_up_event(&mut self, _ctx: &mut Context, keycode: Keycode, keymod: Mod, repeat: bool) {
-        for system in &mut self.keyboard_systems {
+        /*
+        for system in &mut self.keyboard_list {
     		for entity in &mut self.entities {
-    			system.key_up_event(_ctx, entity, KeyboardEventData{keycode: keycode, keymod: keymod, repeat: repeat});
+    			//system.key_up_event(_ctx, entity, KeyboardEventData{keycode: keycode, keymod: keymod, repeat: repeat});
     		}
     	}
+    	*/
+    	for entity in &mut self.entities{
+        	entity.key_up_event(_ctx, keycode, keymod, repeat);
+        }
     }
 
     fn text_editing_event(&mut self, _ctx: &mut Context, text: String, start: i32, length: i32) {
@@ -160,27 +204,42 @@ impl event::EventHandler for ECS{
     }
 
     fn controller_button_down_event(&mut self, _ctx: &mut Context, btn: Button, instance_id: i32) {
-        for system in &mut self.controller_systems {
+        /*
+        for system in &mut self.controller_list {
     		for entity in &mut self.entities {
     			system.controller_button_down_event(_ctx, entity, ControllerButtonEventData{btn: btn, instance_id: instance_id});
     		}
     	}
+    	*/
+    	for entity in &mut self.entities{
+        	entity.controller_button_down_event(_ctx, btn, instance_id);
+        }
     }
 
     fn controller_button_up_event(&mut self, _ctx: &mut Context, btn: Button, instance_id: i32) {
-        for system in &mut self.controller_systems {
+        /*
+        for system in &mut self.controller_list {
     		for entity in &mut self.entities {
     			system.controller_button_up_event(_ctx, entity, ControllerButtonEventData{btn: btn, instance_id: instance_id});
     		}
     	}
+    	*/
+    	for entity in &mut self.entities{
+        	entity.controller_button_up_event(_ctx, btn, instance_id);
+        }
     }
 
     fn controller_axis_event(&mut self, _ctx: &mut Context, axis: Axis, value: i16, instance_id: i32) {
-        for system in &mut self.controller_systems {
+        /*
+        for system in &mut self.controller_list {
     		for entity in &mut self.entities {
     			system.controller_axis_event(_ctx, entity, ControllerAxisEventData{axis: axis, value: value, instance_id: instance_id});
     		}
     	}
+    	*/
+    	for entity in &mut self.entities{
+        	entity.controller_axis_event(_ctx, axis, value, instance_id);
+        }
     }
 
     fn focus_event(&mut self, _ctx: &mut Context, gained: bool) {
