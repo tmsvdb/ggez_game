@@ -1,94 +1,85 @@
 extern crate sdl2;
-extern crate rand;
-
-use sdl2::pixels::Color;
-use sdl2::rect::{Rect, Point};
-
-use std::{thread, time};
+use std::path::Path;
 
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use sdl2::render::Renderer;
-use sdl2::EventPump;
+use sdl2::rect::Rect;
+use sdl2::rect::Point;
+use std::time::Duration;
 
-use rand::Rng;
-
-fn  init<'a>()-> (Renderer<'a>, EventPump) {
+fn main() {
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
-    let window = video_subsystem.window("demo", 400, 400)
-        .position_centered()
-        .opengl()
-        .build()
-        .unwrap();
+    let window = video_subsystem.window("SDL2", 640, 480)
+        .position_centered().build().unwrap();
 
-    let mut renderer = window.renderer().build().unwrap();
+    let mut canvas = window.into_canvas()
+        .accelerated().build().unwrap();
+    let texture_creator = canvas.texture_creator();
 
-    let event_pump = sdl_context.event_pump().unwrap();
+    canvas.set_draw_color(sdl2::pixels::Color::RGBA(0,60,80,255));
 
-    renderer.set_draw_color(Color::RGB(255, 255, 255));
-    renderer.clear();
-    renderer.present();
+    let mut timer = sdl_context.timer().unwrap();
 
-    (renderer, event_pump)
-}
+    let mut event_pump = sdl_context.event_pump().unwrap();
 
-fn main() {
-    let (mut r,mut e) = init();
+    // animation sheet and extras are available from
+    // https://opengameart.org/content/a-platformer-in-the-forest
+    let temp_surface = sdl2::surface::Surface::load_bmp(Path::new("assets/characters.bmp")).unwrap();
+    let texture = texture_creator.create_texture_from_surface(&temp_surface).unwrap();
 
-    //let mut x = 0;
-    //let y = 20;
-    let white = Color::RGB(255, 255, 255);
-    let red = Color::RGB(255, 0, 0);
+    let frames_per_anim = 4;
+    let sprite_tile_size = (32,32);
 
-    let st = time::SystemTime::now();
-    let mut last_time:f32 = 0.0;
+    // Baby - walk animation
+    let mut source_rect_0 = Rect::new(0, 0, sprite_tile_size.0, sprite_tile_size.0);
+    let mut dest_rect_0 = Rect::new(0, 0, sprite_tile_size.0*4, sprite_tile_size.0*4);
+    dest_rect_0.center_on(Point::new(-64,120));
 
-    let mut objects: Vec<GameObject> = Vec::new();
-    for _i in 0..1000 {
-        let xpos = rand::thread_rng().gen_range(0, 900);
-        let ypos = rand::thread_rng().gen_range(0, 650);
+    // King - walk animation
+    let mut source_rect_1 = Rect::new(0, 32, sprite_tile_size.0, sprite_tile_size.0);
+    let mut dest_rect_1 = Rect::new(0, 32, sprite_tile_size.0*4, sprite_tile_size.0*4);
+    dest_rect_1.center_on(Point::new(0,240));
 
-        objects.push (GameObject{ rect: Rect::new(xpos, ypos, 10, 10)})
-    }
+    // Soldier - walk animation
+    let mut source_rect_2 = Rect::new(0, 64, sprite_tile_size.0, sprite_tile_size.0);
+    let mut dest_rect_2 = Rect::new(0, 64, sprite_tile_size.0*4, sprite_tile_size.0*4);
+    dest_rect_2.center_on(Point::new(440,360));
 
-    'running:loop {
-        for event in e.poll_iter() {
+    let mut running = true;
+    while running {
+        for event in event_pump.poll_iter() {
             match event {
-                Event::KeyDown {
-                  keycode: Some(Keycode::Escape), .. 
-                } => { break 'running },
+                Event::Quit {..} | Event::KeyDown {keycode: Some(Keycode::Escape), ..} => {
+                    running = false;
+                },
                 _ => {}
             }
         }
-        r.set_draw_color(white);
-        r.clear();
-        r.set_draw_color(red);
-        for go in &objects {
-            r.fill_rect(go.rect);
-        }
-        r.present();
 
-        let delta_time = st.elapsed().unwrap().subsec_nanos()as f32 - last_time;
-        last_time = st.elapsed().unwrap().subsec_nanos() as f32;
+        let ticks = timer.ticks() as i32;
 
-        for go in &mut objects {
-            let rect = (go.rect.x() + 1) % 400; //(delta_time / 10000000.0) as i32) % 400;
-            go.rect.set_x(rect);
-        }
-        //x = (x + 5) % 400;
-        //thread::sleep(time::Duration::from_millis(50));
-        //let delta_time = st.elapsed().unwrap().subsec_nanos()as f32 - last_time;
-        //last_time = st.elapsed().unwrap().subsec_nanos() as f32;
-        //println!("elapsed {:?}", delta_time);
+        // set the current frame for time
+        source_rect_0.set_x(32 * ((ticks / 100) % frames_per_anim));
+        dest_rect_0.set_x(1 * ((ticks / 14) % 768) - 128);
+
+        source_rect_1.set_x(32 * ((ticks / 100) % frames_per_anim));
+        dest_rect_1.set_x((1 * ((ticks / 12) % 768) - 672) * -1);
+
+        source_rect_2.set_x(32 * ((ticks / 100) % frames_per_anim));
+        dest_rect_2.set_x(1 * ((ticks / 10) % 768) - 128);
+
+        canvas.clear();
+        // copy the frame to the canvas
+        canvas.copy_ex(&texture, Some(source_rect_0), Some(dest_rect_0), 0.0, None, false, false).unwrap();
+        canvas.copy_ex(&texture, Some(source_rect_1), Some(dest_rect_1), 0.0, None, true, false).unwrap();
+        canvas.copy_ex(&texture, Some(source_rect_2), Some(dest_rect_2), 0.0, None, false, false).unwrap();
+        canvas.present();
+
+        std::thread::sleep(Duration::from_millis(100));
     }
 }
-
-struct GameObject{
-    rect: Rect,
-}
-
 
 
 
