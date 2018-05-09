@@ -1,11 +1,78 @@
 extern crate sdl2;
 use std::path::Path;
+use std::time;
 
+use sdl2::render::{Canvas, Texture};
+use sdl2::video::Window;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::rect::Rect;
 use sdl2::rect::Point;
-use std::time::Duration;
+//use std::time::Duration;
+
+
+struct Sprite {
+    texture_index: usize,
+    source_rect: Rect,
+    dest_rect: Rect,
+}
+
+trait Display {
+    fn center_destenation_on (&mut self, x: i32, y: i32);
+    fn set_frame (&mut self, index: usize);
+    fn set_position_x (&mut self, x: i32);
+    fn draw (&self, canvas: &mut Canvas<Window>, textures: &Vec<Texture>);
+}
+
+trait Transform {
+    fn get_x (&self) -> i32 { 0 }
+    fn get_y (&self) -> i32 { 0 }
+    fn set_x (&self, x: i32);
+    fn set_y (&self, y: i32);
+}
+
+struct Character {
+    display: Box<Display>,
+    //transform: Box<Transform>,
+}
+
+impl Character {
+    fn center_destenation_on (&mut self, x: i32, y: i32){
+        self.display.center_destenation_on(x, y);
+    }
+    fn set_frame (&mut self, index: usize){
+        self.display.set_frame(index);
+    }
+    fn set_position_x (&mut self, x: i32){
+        self.display.set_position_x(x);
+    }
+    fn draw(&self, canvas: &mut Canvas<Window>, textures: &Vec<Texture>) {
+        self.display.draw(canvas, textures);
+    }
+}
+
+impl Sprite {
+    
+}
+
+impl Display for Sprite {
+    fn center_destenation_on (&mut self, x: i32, y: i32){
+        self.dest_rect.center_on(Point::new(x,y));
+    }
+    fn set_frame (&mut self, index: usize){
+
+        let fwi = self.source_rect.w * index as i32;
+        let fh = self.source_rect.h;
+        self.source_rect.set_x(fwi % self.dest_rect.w);
+        self.source_rect.set_y((fwi as f32 / self.dest_rect.w as f32).floor() as i32 * fh);
+    }
+    fn set_position_x (&mut self, x: i32){
+        self.dest_rect.set_x(x);
+    }
+    fn draw (&self, canvas: &mut Canvas<Window>, textures: &Vec<Texture>) {
+        canvas.copy_ex(&textures[self.texture_index], Some(self.source_rect), Some(self.dest_rect), 0.0, None, false, false).unwrap();
+    }
+}
 
 fn main() {
     let sdl_context = sdl2::init().unwrap();
@@ -21,7 +88,6 @@ fn main() {
     canvas.set_draw_color(sdl2::pixels::Color::RGBA(0,60,80,255));
 
     let mut timer = sdl_context.timer().unwrap();
-
     let mut event_pump = sdl_context.event_pump().unwrap();
 
     // animation sheet and extras are available from
@@ -29,23 +95,68 @@ fn main() {
     let temp_surface = sdl2::surface::Surface::load_bmp(Path::new("assets/characters.bmp")).unwrap();
     let texture = texture_creator.create_texture_from_surface(&temp_surface).unwrap();
 
+    let mut textures: Vec<Texture> = Vec::new();
+    textures.push (texture);
+
     let frames_per_anim = 4;
-    let sprite_tile_size = (32,32);
+    //let sprite_tile_size = (32,32);
+
+    let mut characters: Vec<Character> = Vec::new();
+
+
 
     // Baby - walk animation
-    let mut source_rect_0 = Rect::new(0, 0, sprite_tile_size.0, sprite_tile_size.0);
-    let mut dest_rect_0 = Rect::new(0, 0, sprite_tile_size.0*4, sprite_tile_size.0*4);
-    dest_rect_0.center_on(Point::new(-64,120));
+    let mut baby = Character {
+        display: Box::new(
+            Sprite { 
+                texture_index: 0,
+                source_rect: Rect::new(0, 0, 32, 32), //sprite_tile_size.0, sprite_tile_size.0),
+                dest_rect: Rect::new(0, 0, 128, 128), //sprite_tile_size.0*4, sprite_tile_size.0*4),
+            }
+        )
+    };
+    //let mut source_rect_0 = Rect::new(0, 0, sprite_tile_size.0, sprite_tile_size.0);
+    //let mut dest_rect_0 = Rect::new(0, 0, sprite_tile_size.0*4, sprite_tile_size.0*4);
+    //baby.dest_rect.center_on(Point::new(-64,120));
+    baby.center_destenation_on(-64, 120);
+    characters.push(baby);
 
     // King - walk animation
-    let mut source_rect_1 = Rect::new(0, 32, sprite_tile_size.0, sprite_tile_size.0);
-    let mut dest_rect_1 = Rect::new(0, 32, sprite_tile_size.0*4, sprite_tile_size.0*4);
-    dest_rect_1.center_on(Point::new(0,240));
+    let mut king = Character {
+        display: Box::new(
+            Sprite {
+                texture_index: 0,
+                source_rect: Rect::new(0, 32, 32, 32), //sprite_tile_size.0, sprite_tile_size.0),
+                dest_rect: Rect::new(0, 32, 128, 128), //sprite_tile_size.0*4, sprite_tile_size.0*4),
+            }
+        ),
+    };
+    //let mut source_rect_1 = Rect::new(0, 32, sprite_tile_size.0, sprite_tile_size.0);
+    //let mut dest_rect_1 = Rect::new(0, 32, sprite_tile_size.0*4, sprite_tile_size.0*4);
+    //king.dest_rect.center_on(Point::new(0,240));
+    king.center_destenation_on(0, 240);
+    characters.push(king);
 
     // Soldier - walk animation
-    let mut source_rect_2 = Rect::new(0, 64, sprite_tile_size.0, sprite_tile_size.0);
-    let mut dest_rect_2 = Rect::new(0, 64, sprite_tile_size.0*4, sprite_tile_size.0*4);
-    dest_rect_2.center_on(Point::new(440,360));
+    let mut soldier = Character {
+        display: Box::new(
+            Sprite {
+                texture_index: 0,
+                source_rect: Rect::new(0, 64, 32, 32), //sprite_tile_size.0, sprite_tile_size.0),
+                dest_rect: Rect::new(0, 64, 128, 128), //sprite_tile_size.0*4, sprite_tile_size.0*4),
+            }
+        ),
+    };
+    //let mut source_rect_2 = Rect::new(0, 64, sprite_tile_size.0, sprite_tile_size.0);
+    //let mut dest_rect_2 = Rect::new(0, 64, sprite_tile_size.0*4, sprite_tile_size.0*4);
+    //soldier.dest_rect.center_on(Point::new(440,360));
+    soldier.center_destenation_on(440,360);
+    characters.push (soldier);
+
+
+    // fps counter:
+    let mut num_frames = 0;
+    let time = time::SystemTime::now();
 
     let mut running = true;
     while running {
@@ -58,27 +169,63 @@ fn main() {
             }
         }
 
+        // delta time in miliseconds
         let ticks = timer.ticks() as i32;
+        num_frames += 1;
 
+        for character in &mut characters {
+            character.set_frame(((ticks / 100) % frames_per_anim) as usize);
+            character.set_position_x(((ticks / 14) % 768) - 128);
+        }
+
+        /*
         // set the current frame for time
-        source_rect_0.set_x(32 * ((ticks / 100) % frames_per_anim));
-        dest_rect_0.set_x(1 * ((ticks / 14) % 768) - 128);
+        //baby.source_rect.set_x(32 * ((ticks / 100) % frames_per_anim));
+        //baby.dest_rect.set_x(1 * ((ticks / 14) % 768) - 128);
+        baby.set_frame(((ticks / 100) % frames_per_anim) as usize);
+        baby.set_position_x(((ticks / 14) % 768) - 128);
 
-        source_rect_1.set_x(32 * ((ticks / 100) % frames_per_anim));
-        dest_rect_1.set_x((1 * ((ticks / 12) % 768) - 672) * -1);
+        //king.source_rect.set_x(32 * ((ticks / 100) % frames_per_anim));
+        //king.dest_rect.set_x((1 * ((ticks / 12) % 768) - 672) * -1);
+        king.set_frame(((ticks / 100) % frames_per_anim) as usize +4);
+        king.set_position_x((1 * ((ticks / 12) % 768) - 672) * -1);
 
-        source_rect_2.set_x(32 * ((ticks / 100) % frames_per_anim));
-        dest_rect_2.set_x(1 * ((ticks / 10) % 768) - 128);
+        //soldier.source_rect.set_x(32 * ((ticks / 100) % frames_per_anim));
+        //soldier.dest_rect.set_x(1 * ((ticks / 10) % 768) - 128);
+        soldier.set_frame(((ticks / 100) % frames_per_anim) as usize +8);
+        soldier.set_position_x(1 * ((ticks / 10) % 768) - 128);
+        */
 
         canvas.clear();
+
+        for character in &mut characters {
+            character.draw(&mut canvas, &textures);
+        }
+        /*
         // copy the frame to the canvas
-        canvas.copy_ex(&texture, Some(source_rect_0), Some(dest_rect_0), 0.0, None, false, false).unwrap();
-        canvas.copy_ex(&texture, Some(source_rect_1), Some(dest_rect_1), 0.0, None, true, false).unwrap();
-        canvas.copy_ex(&texture, Some(source_rect_2), Some(dest_rect_2), 0.0, None, false, false).unwrap();
+        //canvas.copy_ex(&texture, Some(baby.source_rect), Some(baby.dest_rect), 0.0, None, false, false).unwrap();
+        //canvas.copy_ex(&texture, Some(king.source_rect), Some(king.dest_rect), 0.0, None, true, false).unwrap();
+        //canvas.copy_ex(&texture, Some(soldier.source_rect), Some(soldier.dest_rect), 0.0, None, false, false).unwrap();
+        baby.draw(&mut canvas, &textures);
+        king.draw(&mut canvas, &textures);
+        soldier.draw(&mut canvas, &textures);
+        */
         canvas.present();
 
-        std::thread::sleep(Duration::from_millis(100));
+        //std::thread::sleep(Duration::from_millis(100));
     }
+
+    match time.elapsed() {
+       Ok(elapsed) => {
+            let total_time = elapsed.as_secs() as f64+(elapsed.subsec_nanos() as f64 / 1_000_000_000.0);
+            println!("total time = {:?}, num frames = {:?}, average fps = {:?}", total_time, num_frames, num_frames as f64 / total_time);
+       }
+       Err(e) => {
+           // an error occurred!
+           println!("Error: {:?}", e);
+       }
+    }
+    
 }
 
 
