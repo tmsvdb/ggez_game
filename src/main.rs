@@ -13,49 +13,44 @@ use sdl2::rect::Point;
 
 struct Sprite {
     texture_index: usize,
-    source_rect: Rect,
-    dest_rect: Rect,
-}
-
-trait Display {
-    fn center_destenation_on (&mut self, x: i32, y: i32);
-    fn set_frame (&mut self, index: usize);
-    fn set_position_x (&mut self, x: i32);
-    fn draw (&self, canvas: &mut Canvas<Window>, textures: &Vec<Texture>);
-}
-
-trait Transform {
-    fn get_x (&self) -> i32 { 0 }
-    fn get_y (&self) -> i32 { 0 }
-    fn set_x (&self, x: i32);
-    fn set_y (&self, y: i32);
-}
-
-struct Character {
-    display: Box<Display>,
-    //transform: Box<Transform>,
-}
-
-impl Character {
-    fn center_destenation_on (&mut self, x: i32, y: i32){
-        self.display.center_destenation_on(x, y);
-    }
-    fn set_frame (&mut self, index: usize){
-        self.display.set_frame(index);
-    }
-    fn set_position_x (&mut self, x: i32){
-        self.display.set_position_x(x);
-    }
-    fn draw(&self, canvas: &mut Canvas<Window>, textures: &Vec<Texture>) {
-        self.display.draw(canvas, textures);
-    }
+    animations: Vec<Vec<Rect>>,
+    playing_animation: usize,
+    playing_animation_frame: usize,
 }
 
 impl Sprite {
-    
+    fn single_animation (texture_index: usize, animation: Vec<Rect>) -> Sprite {
+
+        let mut new_animations = Vec::new();
+        new_animations.push (animation);
+
+        Sprite {
+            texture_index: texture_index,
+            animations: new_animations,
+            playing_animation: 0,
+            playing_animation_frame: 0,
+        }
+    }
 }
 
-impl Display for Sprite {
+impl SpriteAnimations for Sprite {
+
+    fn play (&mut self, animation_index: usize) {
+        self.playing_animation = animation_index;
+        self.playing_animation_frame = 0;
+    }
+
+    fn add_animation (&mut self, animation_frames: Vec<Rect>) -> usize {
+        self.animations.push(animation_frames);
+        self.animations.len() - 1
+    }
+
+    fn draw_current_frame (&self, canvas: &mut Canvas<Window>, textures: &Vec<Texture>, screen_dimensions: Rect) {
+        let frame = self.animations[self.playing_animation][self.playing_animation_frame];
+        canvas.copy_ex(&textures[self.texture_index], Some(frame), Some(screen_dimensions), 0.0, None, false, false).unwrap();
+    }
+
+    /*
     fn center_destenation_on (&mut self, x: i32, y: i32){
         self.dest_rect.center_on(Point::new(x,y));
     }
@@ -71,8 +66,118 @@ impl Display for Sprite {
     }
     fn draw (&self, canvas: &mut Canvas<Window>, textures: &Vec<Texture>) {
         canvas.copy_ex(&textures[self.texture_index], Some(self.source_rect), Some(self.dest_rect), 0.0, None, false, false).unwrap();
+    }*/
+}
+
+impl Updater for Sprite {
+    fn update (&mut self, delta_time: i32) {
+        self.playing_animation_frame = (delta_time / 100) as usize % self.animations[self.playing_animation].len()
     }
 }
+
+//--
+
+struct GamePosition {
+    position: Point,
+}
+
+impl GamePosition {
+    fn new (x: i32, y: i32) -> GamePosition {
+        GamePosition { position: Point::new (x, y) }
+    }
+}
+
+impl Location for GamePosition {
+    fn set_position (&mut self, x: i32, y: i32){
+        self.position.x = x;
+        self.position.y = y;
+    }
+
+    fn to_screen_position(&self) -> Point {
+        Point::new (self.position.x, self.position.y)
+    }
+}
+
+impl Updater for GamePosition {
+    fn update (&mut self, delta_time: i32) {
+        self.position.x += delta_time / 1000;
+        if self.position.x > 640 { self.position.x = 0; }
+    }
+}
+
+//--
+
+struct GameSize {
+    size: Point,
+}
+
+impl GameSize {
+    fn new (x: i32, y: i32) -> GameSize {
+        GameSize { size: Point::new (x, y) }
+    }
+}
+
+impl Size for GameSize {
+
+    fn set_size (&mut self, width: i32, height: i32) {
+        self.size.x = width;
+        self.size.y = height;
+    }
+
+    fn to_screen_size(&self) -> Point {
+        Point::new (self.size.x, self.size.y)
+    }
+}
+
+impl Updater for GameSize {
+    fn update (&mut self, delta_time: i32) {
+    }
+}
+
+//--
+
+trait Updater {
+    fn update (&mut self, delta_time: i32);
+}
+
+trait SpriteAnimations : Updater {
+    fn play(&mut self, animation_index: usize);
+    fn add_animation (&mut self, animation_frames: Vec<Rect>) -> usize;
+    fn draw_current_frame (&self, canvas: &mut Canvas<Window>, textures: &Vec<Texture>, screen_dimensions: Rect);
+}
+
+trait Location : Updater {
+    fn set_position (&mut self, x: i32, y: i32);
+    fn to_screen_position(&self) -> Point;
+}
+
+trait Size : Updater {
+    fn set_size (&mut self, width: i32, height: i32);
+    fn to_screen_size(&self) -> Point;
+}
+
+//--
+
+struct Character {
+    sprite_animations: Box<SpriteAnimations>,
+    location: Box<Location>,
+    size: Box<Size>,
+}
+
+impl Character {
+
+    fn update (&mut self, delta_time: i32){
+        self.sprite_animations.update(delta_time);
+        self.location.update(delta_time);
+    }
+
+    fn draw(&self, canvas: &mut Canvas<Window>, textures: &Vec<Texture>) {
+        let p = self.location.to_screen_position();
+        let s = self.size.to_screen_size();
+        self.sprite_animations.draw_current_frame(canvas, textures, Rect::new(p.x, p.y, s.x as u32, s.y as u32));
+    }
+}
+
 
 fn main() {
     let sdl_context = sdl2::init().unwrap();
@@ -104,53 +209,44 @@ fn main() {
     let mut characters: Vec<Character> = Vec::new();
 
 
+    let baby_animation = vec![Rect::new(0, 0, 32, 32),Rect::new(32, 0, 32, 32),Rect::new(64, 0, 32, 32),Rect::new(96, 0, 32, 32)];
+    let king_animation = vec![Rect::new(0, 32, 32, 32),Rect::new(32,32, 32, 32),Rect::new(64, 32, 32, 32),Rect::new(96, 32, 32, 32)];
+    let soldier_animation = vec![Rect::new(0, 64, 32, 32),Rect::new(32, 64, 32, 32),Rect::new(64, 64, 32, 32),Rect::new(96, 64, 32, 32)];
 
     // Baby - walk animation
     let mut baby = Character {
-        display: Box::new(
-            Sprite { 
-                texture_index: 0,
-                source_rect: Rect::new(0, 0, 32, 32), //sprite_tile_size.0, sprite_tile_size.0),
-                dest_rect: Rect::new(0, 0, 128, 128), //sprite_tile_size.0*4, sprite_tile_size.0*4),
-            }
-        )
+        sprite_animations: Box::new (Sprite::single_animation (0, baby_animation)),
+        location: Box::new (GamePosition::new (64, 120)),
+        size: Box::new (GameSize::new (128, 128)),
     };
     //let mut source_rect_0 = Rect::new(0, 0, sprite_tile_size.0, sprite_tile_size.0);
     //let mut dest_rect_0 = Rect::new(0, 0, sprite_tile_size.0*4, sprite_tile_size.0*4);
     //baby.dest_rect.center_on(Point::new(-64,120));
-    baby.center_destenation_on(-64, 120);
+    //baby.center_destenation_on(-64, 120);
     characters.push(baby);
 
     // King - walk animation
     let mut king = Character {
-        display: Box::new(
-            Sprite {
-                texture_index: 0,
-                source_rect: Rect::new(0, 32, 32, 32), //sprite_tile_size.0, sprite_tile_size.0),
-                dest_rect: Rect::new(0, 32, 128, 128), //sprite_tile_size.0*4, sprite_tile_size.0*4),
-            }
-        ),
+        sprite_animations: Box::new (Sprite::single_animation (0, king_animation)),
+        location: Box::new (GamePosition::new (0, 240)),
+        size: Box::new (GameSize::new (128, 128)),
     };
     //let mut source_rect_1 = Rect::new(0, 32, sprite_tile_size.0, sprite_tile_size.0);
     //let mut dest_rect_1 = Rect::new(0, 32, sprite_tile_size.0*4, sprite_tile_size.0*4);
     //king.dest_rect.center_on(Point::new(0,240));
-    king.center_destenation_on(0, 240);
+    //king.center_destenation_on(0, 240);
     characters.push(king);
 
     // Soldier - walk animation
     let mut soldier = Character {
-        display: Box::new(
-            Sprite {
-                texture_index: 0,
-                source_rect: Rect::new(0, 64, 32, 32), //sprite_tile_size.0, sprite_tile_size.0),
-                dest_rect: Rect::new(0, 64, 128, 128), //sprite_tile_size.0*4, sprite_tile_size.0*4),
-            }
-        ),
+        sprite_animations: Box::new (Sprite::single_animation (0, soldier_animation)),
+        location: Box::new (GamePosition::new (440, 360)),
+        size: Box::new (GameSize::new (128, 128)),
     };
     //let mut source_rect_2 = Rect::new(0, 64, sprite_tile_size.0, sprite_tile_size.0);
     //let mut dest_rect_2 = Rect::new(0, 64, sprite_tile_size.0*4, sprite_tile_size.0*4);
     //soldier.dest_rect.center_on(Point::new(440,360));
-    soldier.center_destenation_on(440,360);
+    //soldier.center_destenation_on(440,360);
     characters.push (soldier);
 
 
@@ -174,8 +270,9 @@ fn main() {
         num_frames += 1;
 
         for character in &mut characters {
-            character.set_frame(((ticks / 100) % frames_per_anim) as usize);
-            character.set_position_x(((ticks / 14) % 768) - 128);
+            character.update(ticks);
+            //character.set_frame(((ticks / 100) % frames_per_anim) as usize);
+            //character.set_position_x(((ticks / 14) % 768) - 128);
         }
 
         /*
